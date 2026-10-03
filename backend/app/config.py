@@ -18,6 +18,14 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     cors_origins: list[str] = ["http://localhost:3000"]
 
+    # Assistant
+    assistant_name: str = "Sarah"
+    session_store: Literal["memory", "redis"] = "memory"
+    session_ttl_seconds: int = 3600
+    nlu_provider: Literal["rules", "ollama"] = "rules"
+    ollama_url: str = "http://localhost:11434"
+    ollama_model: str = "llama3.2"
+
     @model_validator(mode="after")
     def _no_mock_in_production(self) -> "Settings":
         if self.app_env == "production" and self.mock_mode:

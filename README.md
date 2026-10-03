@@ -7,8 +7,13 @@ Platform through authorized mechanisms. Development is zero-cost: everything run
 Phase 1 (done): FastAPI backend, config (`development|staging|production`), `SwiggyPlatform`
 abstraction, Mock Swiggy MCP (synthetic data), docker-compose (Postgres, Redis), tests.
 
-Not built yet: query/intent agents, LangGraph workflow, budget engine, recommendations,
-Next.js chat UI, voice, Kubernetes manifests (`k8s/`), Jenkinsfile (`jenkins/`),
+Phase 2 (done): LangGraph assistant (intent detection, tool calling, restaurant/menu search, cart
+operations, conversational state in memory/Redis). See docs/PHASE2.md. `POST /api/chat`.
+
+Phase 3a (done): **Sarah** persona + budget engine ("biryani for two under 500" -> best restaurant -> cart).
+See docs/PHASE3_SARAH.md.
+
+Not built yet: Next.js chat UI, voice (speech-to-text / text-to-speech), Kubernetes manifests (`k8s/`), Jenkinsfile (`jenkins/`),
 real Swiggy OAuth/MCP integration (Stage 2, from Swiggy's current official docs).
 
 ## Run

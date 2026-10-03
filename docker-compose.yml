@@ -36,6 +36,9 @@ services:
       MOCK_MCP_URL: http://mock-mcp:8100
       DATABASE_URL: postgresql://${POSTGRES_USER:-swiggy}:${POSTGRES_PASSWORD:-change-me-locally}@postgres:5432/${POSTGRES_DB:-swiggy_assistant}
       REDIS_URL: redis://redis:6379/0
+      SESSION_STORE: redis
+      NLU_PROVIDER: ${NLU_PROVIDER:-rules}
+      OLLAMA_URL: ${OLLAMA_URL:-http://host.docker.internal:11434}
     ports:
       - "8000:8000"
     depends_on:

@@ -17,6 +17,9 @@ class RealSwiggyPlatform(SwiggyPlatform):
     def capabilities(self) -> dict[str, bool]:
         return {c: False for c in CAPABILITIES}
 
+    def unsupported_reason(self) -> str | None:
+        return _REASON
+
     def _no(self, name: str) -> PlatformResult:
         return unsupported("swiggy", name, _REASON)
 

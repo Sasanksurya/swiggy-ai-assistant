@@ -17,6 +17,8 @@ RESTAURANTS = [
      "area": "Demo Area C", "rating": 4.1, "delivery_time_min": 28, "price_for_two_inr": 350, "is_open": True},
     {"id": "r-006", "name": "Placeholder Sweets (Synthetic)", "cuisines": ["Desserts", "Sweets"],
      "area": "Demo Area C", "rating": 4.5, "delivery_time_min": 20, "price_for_two_inr": 200, "is_open": False},
+    {"id": "r-007", "name": "Sample Hyderabadi Kitchen (Synthetic)", "cuisines": ["Biryani", "Hyderabadi"],
+     "area": "Demo Area A", "rating": 4.3, "delivery_time_min": 32, "price_for_two_inr": 450, "is_open": True},
 ]
 
 
@@ -61,6 +63,14 @@ MENUS = {
     "r-006": [
         _item("r-006", 1, "Kaju Katli (250 g)", 300, True, "Dessert"),
         _item("r-006", 2, "Rasmalai (2 pc)", 110, True, "Dessert"),
+    ],
+    "r-007": [
+        _item("r-007", 1, "Hyderabadi Chicken Biryani", 250, False, "Main"),
+        _item("r-007", 2, "Hyderabadi Veg Biryani", 190, True, "Main"),
+        _item("r-007", 3, "Mutton Biryani", 330, False, "Main"),
+        _item("r-007", 4, "Mirchi Ka Salan", 60, True, "Side"),
+        _item("r-007", 5, "Soft Drink (Cola)", 40, True, "Beverage"),
+        _item("r-007", 6, "Double Ka Meetha", 70, True, "Dessert"),
     ],
 }
 

@@ -35,3 +35,22 @@ async def api(platform):
                                  base_url="http://test") as c:
         yield c
     backend_app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def assistant(platform):
+    from app.assistant.nlu import RuleBasedNLU
+    from app.assistant.service import AssistantService
+    from app.assistant.session_store import InMemorySessionStore
+    return AssistantService(platform, RuleBasedNLU(), InMemorySessionStore())
+
+
+@pytest.fixture
+async def chat_api(assistant, platform):
+    from app.assistant.factory import get_assistant
+    backend_app.dependency_overrides[get_assistant] = lambda: assistant
+    backend_app.dependency_overrides[get_platform] = lambda: platform  # same platform as the assistant
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=backend_app),
+                                 base_url="http://test") as c:
+        yield c
+    backend_app.dependency_overrides.clear()

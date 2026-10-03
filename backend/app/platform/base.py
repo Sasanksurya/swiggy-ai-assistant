@@ -43,6 +43,10 @@ class SwiggyPlatform(ABC):
     @abstractmethod
     def capabilities(self) -> dict[str, bool]: ...
 
+    def unsupported_reason(self) -> str | None:
+        """Optional human-readable reason shown when a capability is not available."""
+        return None
+
     @abstractmethod
     async def search_restaurants(self, query: str = "", cuisine: str | None = None,
                                  max_price_for_two_inr: int | None = None,

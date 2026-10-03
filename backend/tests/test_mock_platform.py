@@ -1,6 +1,6 @@
 async def test_all_results_marked_synthetic(platform):
     r = await platform.search_restaurants()
-    assert r.ok and r.synthetic and r.source == "mock" and len(r.data) == 6
+    assert r.ok and r.synthetic and r.source == "mock" and len(r.data) == 7
 
 
 async def test_search_filters(platform):
