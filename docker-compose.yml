@@ -1,0 +1,50 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-swiggy}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change-me-locally}
+      POSTGRES_DB: ${POSTGRES_DB:-swiggy_assistant}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-swiggy}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mock-mcp:
+    build: ./mock-mcp
+    ports:
+      - "8100:8100"
+
+  backend:
+    build: ./backend
+    env_file:
+      - .env.example
+    environment:
+      APP_ENV: development
+      MOCK_MODE: "true"
+      MOCK_MCP_URL: http://mock-mcp:8100
+      DATABASE_URL: postgresql://${POSTGRES_USER:-swiggy}:${POSTGRES_PASSWORD:-change-me-locally}@postgres:5432/${POSTGRES_DB:-swiggy_assistant}
+      REDIS_URL: redis://redis:6379/0
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      mock-mcp:
+        condition: service_started
+
+volumes:
+  pgdata:
