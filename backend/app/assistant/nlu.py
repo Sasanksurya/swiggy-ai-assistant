@@ -14,7 +14,7 @@ from pydantic import BaseModel
 Intent = Literal[
     "greet", "help", "search_restaurants", "search_menu", "show_menu", "add_to_cart", "update_cart",
     "remove_from_cart", "view_cart", "order_status", "order_details", "select", "affirm", "deny",
-    "plan_meal", "use_plan", "unsupported_action", "unknown",
+    "plan_meal", "use_plan", "place_order", "cancel_order", "unsupported_action", "unknown",
 ]
 INTENTS: tuple[str, ...] = Intent.__args__  # type: ignore[attr-defined]
 
@@ -73,8 +73,10 @@ _STRICT_ADD = re.compile(r"\b(add|put|include|order|buy)\b", re.I)
 _SOFT_ADD = re.compile(r"\b(i want|get me|give me|i need|i'?ll have|i'?ll take|i would like|i'd like)\b", re.I)
 _SEARCH_WORDS = re.compile(r"\b(find|show|search|suggest|recommend|looking|what|any|options|dish(es)?|items|"
                            r"something|anything|cheap|list|which)\b", re.I)
-_UNSUPPORTED = re.compile(r"\b(checkout|check out|pay now|pay for|payment|place (my |the |an? )?order|"
-                          r"confirm (my |the )?order|cancel (my |the )?order|refund)\b", re.I)
+_CANCEL = re.compile(r"\b(cancel (my |the |this )?order|refund)\b", re.I)
+_PLACE = re.compile(r"\b(checkout|check out|pay now|pay for (my |the )?order|place (my |the |an? )?order|"
+                    r"confirm (my |the )?order|buy now)\b", re.I)
+_UNSUPPORTED = re.compile(r"\b(payment|pay)\b", re.I)  # other payment talk we do not handle
 
 
 def _strip_tokens(text: str) -> str:
@@ -160,17 +162,21 @@ class RuleBasedNLU(NLU):
 
         r.intent = self._intent(t, r, has_pending)
         if r.intent in {"view_cart", "greet", "help", "affirm", "deny", "order_status", "order_details",
-                        "unsupported_action", "use_plan"}:
+                        "unsupported_action", "use_plan", "place_order", "cancel_order"}:
             r.query = None
         if r.intent == "unknown":
             r.confidence = 0.2
         return r
 
     def _intent(self, t: str, r: NLUResult, has_pending: bool) -> str:
-        if re.fullmatch(r"\s*(yes|yeah|yep|sure|ok(ay)?|confirm|do it|go ahead|please do)\s*[.!]?\s*", t):
+        if re.fullmatch(r"\s*(yes|yeah|yep|yup|sure|ok(ay)?|confirm|do it|go ahead|please do)(,?\s*(please|place it|order it|go ahead))?\s*[.!]?\s*", t):
             return "affirm"
         if re.fullmatch(r"\s*(no|nope|nah|cancel|never ?mind|stop)\s*[.!]?\s*", t):
             return "deny"
+        if _CANCEL.search(t):
+            return "cancel_order"
+        if _PLACE.search(t):
+            return "place_order"
         if _UNSUPPORTED.search(t):
             return "unsupported_action"
         if re.search(r"\b(help|what can you do|how (do|does) (you|this) work)\b", t):

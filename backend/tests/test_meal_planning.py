@@ -151,3 +151,20 @@ async def test_reply_is_speakable_each_dish_named_once(assistant):
     for name in ("Hyderabadi Veg Biryani", "Soft Drink (Cola)"):
         assert r.reply.count(name) == 1, r.reply
     assert "(items, before delivery)" in r.reply
+
+
+async def test_plan_cards_carry_budget_and_people_for_the_ui(assistant):
+    r = await say(assistant, "biryani for two under 500", "ui")
+    assert r.cards["budget_inr"] == 500 and r.cards["people"] == 2
+    # the budget survives a multi-turn request, where the final message never repeats it
+    await say(assistant, "I want biryani for two people", "ui2")
+    r = await say(assistant, "600", "ui2")
+    assert r.cards["budget_inr"] == 600 and r.cards["people"] == 2
+    r = await say(assistant, "use option 2", "ui2")
+    assert r.cards["budget_inr"] == 600
+
+
+async def test_blocked_plan_still_reports_budget(assistant):
+    await say(assistant, "add 1 masala dosa", "ui3")
+    r = await say(assistant, "biryani for two under 500", "ui3")
+    assert r.cards["budget_inr"] == 500 and r.cards["people"] == 2 and "plans" in r.cards

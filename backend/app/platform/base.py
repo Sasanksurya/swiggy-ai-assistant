@@ -31,6 +31,7 @@ def unsupported(source: Literal["mock", "swiggy"], capability: str, reason: str 
 CAPABILITIES = (
     "search_restaurants", "get_restaurant_details", "search_menu", "get_menu", "get_item_details",
     "get_cart", "add_to_cart", "update_cart", "remove_from_cart", "get_order_status", "get_order_details",
+    "get_addresses", "place_order",
 )
 
 
@@ -85,3 +86,12 @@ class SwiggyPlatform(ABC):
 
     @abstractmethod
     async def get_order_details(self, order_id: str) -> PlatformResult: ...
+
+    # Optional capabilities: platforms that do not implement them report "unsupported" instead of faking data.
+    async def get_addresses(self) -> PlatformResult:
+        return unsupported(self.source, "get_addresses", self.unsupported_reason())
+
+    async def place_order(self, address_id: str, payment_method: str = "COD",
+                          session_id: str = "default") -> PlatformResult:
+        """Places a REAL order on a real platform. Callers must obtain explicit user confirmation first."""
+        return unsupported(self.source, "place_order", self.unsupported_reason())

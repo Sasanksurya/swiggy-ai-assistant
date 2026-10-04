@@ -28,4 +28,5 @@ def build_store(settings: Settings) -> SessionStore:
 @lru_cache
 def get_assistant() -> AssistantService:
     s = get_settings()
-    return AssistantService(get_platform(), build_nlu(s), build_store(s), s.assistant_name)
+    return AssistantService(get_platform(), build_nlu(s), build_store(s), s.assistant_name,
+                            allow_orders=s.mock_mode or s.allow_real_orders)

@@ -12,7 +12,8 @@ from ..platform.factory import get_platform
 router = APIRouter()
 
 _STATUS = {"not_found": 404, "invalid_argument": 400, "item_unavailable": 409,
-           "restaurant_conflict": 409, "unsupported_capability": 501, "mcp_unavailable": 502}
+           "restaurant_conflict": 409, "empty_cart": 409, "cart_cap_exceeded": 409,
+           "unsupported_capability": 501, "mcp_unavailable": 502}
 
 
 def respond(result: PlatformResult) -> PlatformResult:

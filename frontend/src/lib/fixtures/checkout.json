@@ -1,0 +1,53 @@
+{
+ "session_id": "fxco",
+ "assistant_name": "Sarah",
+ "reply": "Here's your order from Sample Dosa Corner (Synthetic):\n\u2022 2 \u00d7 Masala Dosa \u2014 \u20b9180\nSubtotal \u20b9180 + delivery \u20b930 = \u20b9210\nPayment: cash on delivery.\nDelivering to: Demo Office Park, Demo Area B (Synthetic).\nDo you want to proceed with placing this order to this address? Say 'yes' to place it or 'no' to cancel.",
+ "intent": "choose_address",
+ "entities": {
+  "ref_index": 2,
+  "wants_drinks": false
+ },
+ "cards": {
+  "cart": {
+   "session_id": "fxco",
+   "restaurant_id": "r-002",
+   "lines": [
+    {
+     "item_id": "m-002-01",
+     "name": "Masala Dosa",
+     "quantity": 2,
+     "unit_price_inr": 90,
+     "line_total_inr": 180
+    }
+   ],
+   "subtotal_inr": 180,
+   "delivery_fee_inr": 30,
+   "total_inr": 210
+  },
+  "checkout": {
+   "restaurant": "Sample Dosa Corner (Synthetic)",
+   "address": "Demo Office Park, Demo Area B (Synthetic)",
+   "payment_method": "COD",
+   "total_inr": 210,
+   "requires_confirmation": true
+  }
+ },
+ "tool_calls": [
+  {
+   "name": "get_cart",
+   "args": {
+    "session_id": "fxco"
+   },
+   "ok": true,
+   "error_code": null
+  },
+  {
+   "name": "search_restaurants",
+   "args": {},
+   "ok": true,
+   "error_code": null
+  }
+ ],
+ "source": "mock",
+ "synthetic": true
+}

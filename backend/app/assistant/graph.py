@@ -13,7 +13,7 @@ from ..platform.base import PlatformResult
 from .budget import MAX_PEOPLE, Plan, build_plans, cheapest_possible
 from .nlu import NLU, NLUResult
 from .resolve import match_by_name, pick_by_index
-from .state import ConversationState, MealRequest, Pending, Ref
+from .state import Confirmation, ConversationState, MealRequest, Pending, Ref
 from .tools import ToolRunner
 
 MAX_QTY = 20
@@ -64,7 +64,7 @@ def _fail(res: PlatformResult, what: str) -> str:
     return f"Sorry, I couldn't {what}: {res.error.message if res.error else 'unknown error'}"
 
 
-def build_assistant_graph(nlu_engine: NLU, assistant_name: str = "Sarah"):
+def build_assistant_graph(nlu_engine: NLU, assistant_name: str = "Sarah", allow_orders: bool = True):
     # ---------- helpers that call tools ----------
     async def cart_refs(run: ToolRunner) -> tuple[PlatformResult, list[Ref]]:
         res = await run.call("get_cart")
@@ -116,6 +116,8 @@ def build_assistant_graph(nlu_engine: NLU, assistant_name: str = "Sarah"):
                 out["intent"] = "invalid_choice"
             elif res.intent not in {"affirm"}:
                 conv.pending = None  # the user moved on
+        if conv.confirmation and out["intent"] not in {"affirm", "deny"}:
+            conv.confirmation = None  # the user moved on, so an earlier summary can no longer be confirmed
         out["conv"] = conv
         return out
 
@@ -130,8 +132,11 @@ def build_assistant_graph(nlu_engine: NLU, assistant_name: str = "Sarah"):
                                ("add, change or remove cart items", caps.get("add_to_cart")),
                                ("check order status and details", caps.get("get_order_status"))] if ok]
         body = ", ".join(can) if can else "nothing yet, the food service isn't connected"
+        can_order = bool(caps.get("place_order")) and allow_orders
+        tail = ("I can place your order once you confirm it (cash on delivery), but I can't cancel orders; "
+                "Swiggy customer care handles that." if can_order else "I can't place or cancel orders.")
         return {"reply": f"I'm {assistant_name}. I can {body}, and plan a meal for your group within a budget. "
-                         "I can't place orders, cancel them, or take payments."}
+                         f"{tail}"}
 
     async def search_restaurants(s):
         conv, n, run = s["conv"], s["nlu"], s["runner"]
@@ -432,7 +437,8 @@ def build_assistant_graph(nlu_engine: NLU, assistant_name: str = "Sarah"):
             return {"reply": f"Best match for {people} within {inr(budget)}:\n{_plan_text(top)}\n"
                              "Your cart already has items, so I haven't changed it. Remove them (say 'remove "
                              "<item>') and say 'use option 1', or say 'use option 1' now to replace your cart."
-                             + _alternatives(plans), "conv": conv, "cards": {"plans": [p.model_dump() for p in plans]}}
+                             + _alternatives(plans), "conv": conv, "cards": {"plans": [p.model_dump() for p in plans], "budget_inr": budget,
+                                    "people": people}}
         res = await _apply_plan(run, top)
         if not res.ok:
             return {"reply": _fail(res, "add that to your cart")}
@@ -459,7 +465,7 @@ def build_assistant_graph(nlu_engine: NLU, assistant_name: str = "Sarah"):
                          f"I've added it to your cart:\n{_cart_text(res.data)}\n{status}{drinks_note}"
                          + _alternatives(plans),
                 "conv": conv, "cards": {"plan": top.model_dump(), "plans": [p.model_dump() for p in plans],
-                                        "cart": res.data}}
+                                        "cart": res.data, "budget_inr": budget, "people": people}}
 
     async def use_plan(s):
         conv, n, run = s["conv"], s["nlu"], s["runner"]
@@ -483,7 +489,8 @@ def build_assistant_graph(nlu_engine: NLU, assistant_name: str = "Sarah"):
             if budget and total > budget else ""
         conv.last_cart_item_id = plan.lines[-1].item_id
         return {"reply": f"Switched your cart to {_plan_header(plan)}:\n{_cart_text(res.data)}{over}",
-                "conv": conv, "cards": {"plan": plan.model_dump(), "cart": res.data}}
+                "conv": conv, "cards": {"plan": plan.model_dump(), "cart": res.data,
+                                **({"budget_inr": budget} if budget else {})}}
 
     async def select(s):
         conv, n = s["conv"], s["nlu"]
@@ -502,15 +509,106 @@ def build_assistant_graph(nlu_engine: NLU, assistant_name: str = "Sarah"):
         k = len(s["conv"].pending.candidates)
         return {"reply": f"Please pick a number between 1 and {k}."}
 
+    # ---------- checkout: address -> summary -> explicit yes -> place ----------
+    async def _summary(s, cart: dict, note: str = "") -> dict:
+        conv, run = s["conv"], s["runner"]
+        names = await restaurant_names(run)
+        restaurant = names.get(cart.get("restaurant_id"), "your restaurant")
+        conv.confirmation = Confirmation(address_id=conv.address_id, address_line=conv.address_line,
+                                         total_inr=cart["total_inr"])
+        return {"reply": f"{note}Here's your order from {restaurant}:\n{_cart_text(cart)}\n"
+                         f"Payment: cash on delivery.\nDelivering to: {conv.address_line}.\n"
+                         "Do you want to proceed with placing this order to this address? "
+                         "Say 'yes' to place it or 'no' to cancel.",
+                "conv": conv,
+                "cards": {"cart": cart, "checkout": {"restaurant": restaurant, "address": conv.address_line,
+                                                     "payment_method": "COD", "total_inr": cart["total_inr"],
+                                                     "requires_confirmation": True}}}
+
+    async def _begin_checkout(s) -> dict:
+        conv, run = s["conv"], s["runner"]
+        if not allow_orders:
+            return {"reply": "Placing orders is switched off in this environment, so I can only fill your cart."}
+        cart_res = await run.call("get_cart")
+        if not cart_res.ok:
+            return {"reply": _fail(cart_res, "place your order")}
+        cart = cart_res.data
+        if not cart["lines"]:
+            return {"reply": "Your cart is empty. Tell me what you'd like first, for example "
+                             "'biryani for two under 500'."}
+        if not conv.address_id:
+            ares = await run.call("get_addresses")
+            if not ares.ok:
+                return {"reply": _fail(ares, "load your delivery addresses")}
+            if not ares.data:
+                return {"reply": "You don't have a saved delivery address. Please add one in the Swiggy app first."}
+            if len(ares.data) == 1:
+                conv.address_id, conv.address_line = ares.data[0]["id"], ares.data[0]["address_line"]
+            else:
+                cands = [Ref(id=a["id"], name=f"{a['category']}: {a['address_line']}") for a in ares.data[:5]]
+                conv.pending = Pending(action="choose_address", candidates=cands)
+                opts = "\n".join(f"{i}. {c.name}" for i, c in enumerate(cands, 1))
+                return {"reply": f"Where should I deliver this?\n{opts}", "conv": conv}
+        return await _summary(s, cart)
+
+    async def place_order(s):
+        return await _begin_checkout(s)
+
+    async def choose_address(s):
+        conv, target = s["conv"], s["target"]
+        conv.address_id, conv.address_line = target.id, target.name.split(": ", 1)[-1]
+        return await _begin_checkout(s)
+
     async def affirm(s):
-        return {"reply": "Sure. What would you like to do?"}
+        conv, run = s["conv"], s["runner"]
+        conf = conv.confirmation
+        if not conf:
+            return {"reply": "There's nothing waiting for your confirmation. What would you like to do?"}
+        conv.confirmation = None  # single use: this yes can never place a second order
+        if not allow_orders:
+            return {"reply": "Placing orders is switched off in this environment, so I haven't ordered anything."}
+        cart_res = await run.call("get_cart")
+        if not cart_res.ok:
+            return {"reply": _fail(cart_res, "place your order")}
+        cart = cart_res.data
+        if not cart["lines"]:
+            return {"reply": "Your cart is empty now, so I haven't placed anything."}
+        if cart["total_inr"] != conf.total_inr:
+            return await _summary(s, cart, note="Your cart changed since I showed you the summary, "
+                                                "so please check it again.\n")
+        res = await run.call("place_order", address_id=conf.address_id, payment_method=conf.payment_method)
+        if not res.ok:
+            code = res.error.code if res.error else ""
+            if code == "mcp_unavailable":  # ordering is not safe to retry blindly
+                return {"reply": "I couldn't confirm whether your order went through. Please check your orders "
+                                 "before trying again, so you don't order twice."}
+            if code in {"cart_cap_exceeded", "empty_cart"}:
+                return {"reply": f"I can't place this order: {res.error.message}. Remove something and ask me again."}
+            return {"reply": _fail(res, "place your order")}
+        o = res.data
+        after = await run.call("get_cart")  # the cart is empty after a successful order
+        status = str(o.get("status", "CONFIRMED")).replace("_", " ").lower()
+        demo = " This is a simulated demo order. Nothing was ordered or charged." if res.synthetic else ""
+        conv.last_cart_item_id, conv.last_plans, conv.plan_budget = None, [], None
+        return {"reply": f"Done! Order {o['order_id']} is {status}. Total {inr(o.get('total_inr', conf.total_inr))}, "
+                         f"cash on delivery, delivering to {conf.address_line}.{demo}",
+                "conv": conv, "cards": {"order": o, **({"cart": after.data} if after.ok else {})}}
 
     async def deny(s):
+        conv = s["conv"]
+        if conv.confirmation:
+            conv.confirmation = None
+            return {"reply": "Okay, I won't place the order. Your cart is unchanged.", "conv": conv}
         return {"reply": "Okay, no problem."}
 
+    async def cancel_order(s):
+        demo = " (This demo has no real orders.)" if s["runner"]._p.source == "mock" else ""
+        return {"reply": "I can't cancel orders. To cancel a Swiggy order, please call Swiggy customer care "
+                         f"at 080-67466729.{demo}"}
+
     async def unsupported_action(s):
-        return {"reply": "I can't place or cancel orders or take payments. That isn't available through the "
-                         "capabilities I have. I can build your cart and check the status of existing orders."}
+        return {"reply": "I can't help with payments or refunds. I can build your cart and, once you confirm it, "
+                         "place the order as cash on delivery."}
 
     async def unknown(s):
         return {"reply": "Sorry, I didn't get that. Try 'veg biryani under 250', 'show pizza restaurants', "
@@ -527,7 +625,8 @@ def build_assistant_graph(nlu_engine: NLU, assistant_name: str = "Sarah"):
              "search_menu": search_menu, "add_to_cart": add_to_cart, "update_cart": update_cart,
              "remove_from_cart": remove_from_cart, "view_cart": view_cart, "order_status": order_status,
              "order_details": order_details, "select": select, "plan_meal": plan_meal, "use_plan": use_plan, "invalid_choice": invalid_choice,
-             "affirm": affirm, "deny": deny, "unsupported_action": unsupported_action, "unknown": unknown}
+             "affirm": affirm, "deny": deny, "unsupported_action": unsupported_action, "unknown": unknown,
+             "place_order": place_order, "choose_address": choose_address, "cancel_order": cancel_order}
     g = StateGraph(GraphState)
     g.add_node("understand", understand)
     for name, fn in nodes.items():

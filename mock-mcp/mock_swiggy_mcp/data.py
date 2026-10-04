@@ -75,6 +75,13 @@ MENUS = {
 }
 
 DELIVERY_FEE_INR = 30  # synthetic flat fee
+ORDER_CAP_INR = 1000   # mirrors the documented Builders Club cart cap so the demo behaves like the real thing
+
+# Synthetic addresses. No phone numbers: the real API returns one per address, which is PII we never keep.
+ADDRESSES = [
+    {"id": "addr-001", "category": "Home", "address_line": "Flat 101, Demo Apartments, Demo Area A (Synthetic)"},
+    {"id": "addr-002", "category": "Work", "address_line": "Demo Office Park, Demo Area B (Synthetic)"},
+]
 
 ORDERS = {
     "ORD-DEMO-1001": {"order_id": "ORD-DEMO-1001", "restaurant_id": "r-002", "status": "DELIVERED",

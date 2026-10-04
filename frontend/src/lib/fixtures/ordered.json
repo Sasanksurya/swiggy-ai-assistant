@@ -1,0 +1,66 @@
+{
+ "session_id": "fxco",
+ "assistant_name": "Sarah",
+ "reply": "Done! Order ORD-SIM-0001 is confirmed. Total \u20b9210, cash on delivery, delivering to Demo Office Park, Demo Area B (Synthetic). This is a simulated demo order. Nothing was ordered or charged.",
+ "intent": "affirm",
+ "entities": {
+  "wants_drinks": false
+ },
+ "cards": {
+  "order": {
+   "order_id": "ORD-SIM-0001",
+   "restaurant_id": "r-002",
+   "restaurant_name": "Sample Dosa Corner (Synthetic)",
+   "status": "CONFIRMED",
+   "payment_method": "COD",
+   "delivery_address": "Demo Office Park, Demo Area B (Synthetic)",
+   "items": [
+    {
+     "item_id": "m-002-01",
+     "name": "Masala Dosa",
+     "quantity": 2
+    }
+   ],
+   "total_inr": 210,
+   "simulated": true
+  },
+  "cart": {
+   "session_id": "fxco",
+   "restaurant_id": null,
+   "lines": [],
+   "subtotal_inr": 0,
+   "delivery_fee_inr": 0,
+   "total_inr": 0
+  }
+ },
+ "tool_calls": [
+  {
+   "name": "get_cart",
+   "args": {
+    "session_id": "fxco"
+   },
+   "ok": true,
+   "error_code": null
+  },
+  {
+   "name": "place_order",
+   "args": {
+    "address_id": "addr-002",
+    "payment_method": "COD",
+    "session_id": "fxco"
+   },
+   "ok": true,
+   "error_code": null
+  },
+  {
+   "name": "get_cart",
+   "args": {
+    "session_id": "fxco"
+   },
+   "ok": true,
+   "error_code": null
+  }
+ ],
+ "source": "mock",
+ "synthetic": true
+}

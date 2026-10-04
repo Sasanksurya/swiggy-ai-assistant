@@ -40,7 +40,7 @@ async def test_runner_injects_session_id_for_cart(platform):
 
 async def test_runner_rejects_non_capability_names(platform):
     with pytest.raises(ValueError):
-        await ToolRunner(platform, "s").call("place_order")
+        await ToolRunner(platform, "s").call("cancel_order")  # Swiggy has no cancel tool, so we have none either
 
 
 async def test_runner_never_calls_undeclared_capability():

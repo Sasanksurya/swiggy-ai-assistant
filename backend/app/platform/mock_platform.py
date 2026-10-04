@@ -52,3 +52,10 @@ class MockSwiggyPlatform(SwiggyPlatform):
 
     async def get_order_details(self, order_id):
         return await self._c.call_tool("get_order_details", {"order_id": order_id})
+
+    async def get_addresses(self):
+        return await self._c.call_tool("get_addresses", {})
+
+    async def place_order(self, address_id, payment_method="COD", session_id="default"):
+        return await self._c.call_tool("place_order", {
+            "address_id": address_id, "payment_method": payment_method, "session_id": session_id})

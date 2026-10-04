@@ -1,0 +1,12 @@
+# Adds the Sarah web app to the existing stack without editing docker-compose.yml:
+#   docker compose -f docker-compose.yml -f docker-compose.frontend.yml up --build
+# Then open http://localhost:3000
+services:
+  frontend:
+    build: ./frontend
+    environment:
+      BACKEND_URL: http://backend:8000   # server-to-server; the browser only ever talks to :3000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend

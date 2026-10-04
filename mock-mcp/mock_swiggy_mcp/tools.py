@@ -7,9 +7,10 @@ from __future__ import annotations
 
 from typing import Any
 
-from .data import DELIVERY_FEE_INR, MENUS, ORDERS, RESTAURANTS
+from .data import ADDRESSES, DELIVERY_FEE_INR, MENUS, ORDER_CAP_INR, ORDERS, RESTAURANTS
 
 _CARTS: dict[str, dict[str, int]] = {}
+_PLACED: dict[str, dict] = {}  # SIMULATED orders placed during this run (nothing is ever really ordered)
 
 
 class ToolError(Exception):
@@ -21,6 +22,7 @@ class ToolError(Exception):
 
 def reset_state() -> None:
     _CARTS.clear()
+    _PLACED.clear()
 
 
 def _all_items() -> dict[str, dict]:
@@ -143,15 +145,46 @@ def remove_from_cart(item_id: str, session_id: str = "default") -> dict:
     return _cart_view(session_id)
 
 
+def _order(order_id: str) -> dict | None:
+    return _PLACED.get(order_id) or ORDERS.get(order_id)
+
+
+def get_addresses() -> list[dict]:
+    return ADDRESSES
+
+
+def place_order(address_id: str, payment_method: str = "COD", session_id: str = "default") -> dict:
+    """SIMULATED checkout: validates like the real thing, creates a synthetic order, empties the cart."""
+    address = next((a for a in ADDRESSES if a["id"] == address_id), None)
+    if not address:
+        raise ToolError("not_found", f"Address {address_id} not found")
+    if payment_method != "COD":
+        raise ToolError("invalid_argument", "Only cash on delivery (COD) is supported in the demo")
+    cart = _cart_view(session_id)
+    if not cart["lines"]:
+        raise ToolError("empty_cart", "Your cart is empty")
+    if cart["total_inr"] > ORDER_CAP_INR:
+        raise ToolError("cart_cap_exceeded", f"Orders are limited to ₹{ORDER_CAP_INR} (cart is ₹{cart['total_inr']})")
+    order_id = f"ORD-SIM-{len(_PLACED) + 1:04d}"
+    restaurant = _restaurant(cart["restaurant_id"])
+    order = {"order_id": order_id, "restaurant_id": cart["restaurant_id"], "restaurant_name": restaurant["name"],
+             "status": "CONFIRMED", "payment_method": payment_method, "delivery_address": address["address_line"],
+             "items": [{"item_id": l["item_id"], "name": l["name"], "quantity": l["quantity"]} for l in cart["lines"]],
+             "total_inr": cart["total_inr"], "simulated": True}
+    _PLACED[order_id] = order
+    _CARTS.pop(session_id, None)
+    return order
+
+
 def get_order_status(order_id: str) -> dict:
-    o = ORDERS.get(order_id)
+    o = _order(order_id)
     if not o:
         raise ToolError("not_found", f"Order {order_id} not found")
     return {"order_id": order_id, "status": o["status"]}
 
 
 def get_order_details(order_id: str) -> dict:
-    o = ORDERS.get(order_id)
+    o = _order(order_id)
     if not o:
         raise ToolError("not_found", f"Order {order_id} not found")
     return o
@@ -161,5 +194,6 @@ TOOLS: dict[str, Any] = {
     f.__name__: f for f in (
         search_restaurants, get_restaurant_details, search_menu, get_menu, get_item_details,
         get_cart, add_to_cart, update_cart, remove_from_cart, get_order_status, get_order_details,
+        get_addresses, place_order,
     )
 }

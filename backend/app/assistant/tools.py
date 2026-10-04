@@ -9,7 +9,7 @@ from pydantic import BaseModel
 
 from ..platform.base import CAPABILITIES, PlatformResult, SwiggyPlatform, unsupported
 
-_SESSION_TOOLS = {"get_cart", "add_to_cart", "update_cart", "remove_from_cart"}
+_SESSION_TOOLS = {"get_cart", "add_to_cart", "update_cart", "remove_from_cart", "place_order"}
 
 
 class ToolCallLog(BaseModel):

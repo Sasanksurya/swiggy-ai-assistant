@@ -25,11 +25,12 @@ class ChatResponse(BaseModel):
 
 
 class AssistantService:
-    def __init__(self, platform: SwiggyPlatform, nlu: NLU, store: SessionStore, assistant_name: str = "Sarah"):
+    def __init__(self, platform: SwiggyPlatform, nlu: NLU, store: SessionStore, assistant_name: str = "Sarah",
+                 allow_orders: bool = True):
         self._name = assistant_name
         self._platform = platform
         self._store = store
-        self._graph = build_assistant_graph(nlu, assistant_name)
+        self._graph = build_assistant_graph(nlu, assistant_name, allow_orders)
 
     async def chat(self, message: str, session_id: str | None = None) -> ChatResponse:
         sid = session_id or uuid.uuid4().hex

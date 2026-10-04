@@ -1,0 +1,54 @@
+--- a/backend/app/assistant/graph.py	2026-10-03 16:37:15.683952480 +0000
++++ b/backend/app/assistant/graph.py	2026-10-03 16:37:15.754222829 +0000
+@@ -432,7 +432,8 @@
+             return {"reply": f"Best match for {people} within {inr(budget)}:\n{_plan_text(top)}\n"
+                              "Your cart already has items, so I haven't changed it. Remove them (say 'remove "
+                              "<item>') and say 'use option 1', or say 'use option 1' now to replace your cart."
+-                             + _alternatives(plans), "conv": conv, "cards": {"plans": [p.model_dump() for p in plans]}}
++                             + _alternatives(plans), "conv": conv, "cards": {"plans": [p.model_dump() for p in plans], "budget_inr": budget,
++                                    "people": people}}
+         res = await _apply_plan(run, top)
+         if not res.ok:
+             return {"reply": _fail(res, "add that to your cart")}
+@@ -459,7 +460,7 @@
+                          f"I've added it to your cart:\n{_cart_text(res.data)}\n{status}{drinks_note}"
+                          + _alternatives(plans),
+                 "conv": conv, "cards": {"plan": top.model_dump(), "plans": [p.model_dump() for p in plans],
+-                                        "cart": res.data}}
++                                        "cart": res.data, "budget_inr": budget, "people": people}}
+ 
+     async def use_plan(s):
+         conv, n, run = s["conv"], s["nlu"], s["runner"]
+@@ -483,7 +484,8 @@
+             if budget and total > budget else ""
+         conv.last_cart_item_id = plan.lines[-1].item_id
+         return {"reply": f"Switched your cart to {_plan_header(plan)}:\n{_cart_text(res.data)}{over}",
+-                "conv": conv, "cards": {"plan": plan.model_dump(), "cart": res.data}}
++                "conv": conv, "cards": {"plan": plan.model_dump(), "cart": res.data,
++                                **({"budget_inr": budget} if budget else {})}}
+ 
+     async def select(s):
+         conv, n = s["conv"], s["nlu"]
+--- a/backend/tests/test_meal_planning.py	2026-10-03 16:37:15.685937934 +0000
++++ b/backend/tests/test_meal_planning.py	2026-10-03 16:37:15.754859553 +0000
+@@ -151,3 +151,20 @@
+     for name in ("Hyderabadi Veg Biryani", "Soft Drink (Cola)"):
+         assert r.reply.count(name) == 1, r.reply
+     assert "(items, before delivery)" in r.reply
++
++
++async def test_plan_cards_carry_budget_and_people_for_the_ui(assistant):
++    r = await say(assistant, "biryani for two under 500", "ui")
++    assert r.cards["budget_inr"] == 500 and r.cards["people"] == 2
++    # the budget survives a multi-turn request, where the final message never repeats it
++    await say(assistant, "I want biryani for two people", "ui2")
++    r = await say(assistant, "600", "ui2")
++    assert r.cards["budget_inr"] == 600 and r.cards["people"] == 2
++    r = await say(assistant, "use option 2", "ui2")
++    assert r.cards["budget_inr"] == 600
++
++
++async def test_blocked_plan_still_reports_budget(assistant):
++    await say(assistant, "add 1 masala dosa", "ui3")
++    r = await say(assistant, "biryani for two under 500", "ui3")
++    assert r.cards["budget_inr"] == 500 and r.cards["people"] == 2 and "plans" in r.cards

@@ -21,8 +21,9 @@ async def p(msg, pending=False):
     ("make it 3", "update_cart"), ("change idli to 4", "update_cart"),
     ("where is my order ORD-DEMO-1002", "order_status"), ("track order", "order_status"),
     ("details of order ORD-DEMO-1001", "order_details"),
-    ("checkout", "unsupported_action"), ("place my order", "unsupported_action"),
-    ("cancel my order", "unsupported_action"), ("pay now", "unsupported_action"),
+    ("checkout", "place_order"), ("place my order", "place_order"), ("confirm my order", "place_order"),
+    ("pay now", "place_order"), ("cancel my order", "cancel_order"), ("I want a refund", "cancel_order"),
+    ("what payment options do you have", "unsupported_action"),
     ("yes", "affirm"), ("no", "deny"), ("the second one", "select"), ("2", "select"),
     ("asdf qwerty zxcv lkj poiu mnb", "unknown"),
 ])
@@ -140,3 +141,17 @@ async def test_phase2_behaviour_unchanged_by_new_rules():
     assert (await p("show me veg items under 100")).intent == "search_menu"
     assert (await p("add 2 masala dosa")).intent == "add_to_cart"
     assert (await p("any good places for biryani")).intent == "search_restaurants"
+
+
+async def test_checkout_wording_never_swallows_normal_requests():
+    assert (await p("add 2 masala dosa to my order")).intent == "add_to_cart"
+    assert (await p("show me veg items under 100")).intent == "search_menu"
+    assert (await p("where is my order ORD-DEMO-1002")).intent == "order_status"
+    assert (await p("confirm")).intent == "affirm"  # a bare "confirm" answers a question, it does not start checkout
+
+
+async def test_natural_ways_to_confirm_but_never_a_request_that_merely_starts_with_yes():
+    for ok in ["yes", "Yes!", "yes please", "yes, place it", "yeah", "go ahead", "confirm", "ok please"]:
+        assert (await p(ok)).intent == "affirm", ok
+    assert (await p("yes add 2 masala dosa")).intent == "add_to_cart"
+    assert (await p("yes show me the menu")).intent != "affirm"

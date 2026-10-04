@@ -34,3 +34,5 @@ class RealSwiggyPlatform(SwiggyPlatform):
     async def remove_from_cart(self, *a, **k): return self._no("remove_from_cart")
     async def get_order_status(self, *a, **k): return self._no("get_order_status")
     async def get_order_details(self, *a, **k): return self._no("get_order_details")
+    async def get_addresses(self, *a, **k): return self._no("get_addresses")
+    async def place_order(self, *a, **k): return self._no("place_order")

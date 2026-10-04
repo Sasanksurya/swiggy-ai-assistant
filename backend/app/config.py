@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     # true  -> Mock Swiggy MCP (synthetic data)
     # false -> authorized Swiggy MCP (Stage 2)
     mock_mode: bool = True
-    mock_mcp_url: str = "http://localhost:8100"
+    mock_mcp_url: str = "http://127.0.0.1:8100"
 
     database_url: str = "postgresql://swiggy:change-me-locally@localhost:5432/swiggy_assistant"
     redis_url: str = "redis://localhost:6379/0"
@@ -20,6 +20,8 @@ class Settings(BaseSettings):
 
     # Assistant
     assistant_name: str = "Sarah"
+    # Placing REAL orders. Off by default; the mock always allows its simulated orders.
+    allow_real_orders: bool = False
     session_store: Literal["memory", "redis"] = "memory"
     session_ttl_seconds: int = 3600
     nlu_provider: Literal["rules", "ollama"] = "rules"

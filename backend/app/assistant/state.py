@@ -25,9 +25,17 @@ class Ref(BaseModel):
 
 class Pending(BaseModel):
     """The assistant asked a clarifying question and is waiting for the user's choice."""
-    action: Literal["add_to_cart", "show_menu"]
+    action: Literal["add_to_cart", "show_menu", "choose_address"]
     quantity: int = 1
     candidates: list[Ref]
+
+
+class Confirmation(BaseModel):
+    """What the user was shown and asked to confirm. A 'yes' only counts while this is set, and only once."""
+    address_id: str
+    address_line: str
+    total_inr: float
+    payment_method: str = "COD"
 
 
 class MealRequest(BaseModel):
@@ -52,6 +60,9 @@ class ConversationState(BaseModel):
     meal_request: MealRequest | None = None
     last_plans: list[Plan] = Field(default_factory=list)
     plan_budget: int | None = None
+    address_id: str | None = None       # delivery address chosen for this conversation
+    address_line: str | None = None
+    confirmation: Confirmation | None = None
 
     def add_turn(self, role: str, text: str) -> None:
         self.history.append(Turn(role=role, text=text))

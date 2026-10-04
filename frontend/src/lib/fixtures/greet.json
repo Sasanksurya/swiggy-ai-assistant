@@ -1,0 +1,1 @@
+{"session_id":"fx1","assistant_name":"Sarah","reply":"Hi, I'm Sarah, your food assistant. Tell me what you're craving, how many people are eating and your budget, and I'll find the best option and add it to your cart. For example: 'biryani for two under 500'.","intent":"greet","entities":{"wants_drinks":false},"cards":{},"tool_calls":[],"source":"mock","synthetic":true}

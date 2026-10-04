@@ -1,0 +1,1 @@
+{"session_id":"fx6","assistant_name":"Sarah","reply":"I can't place or cancel orders or take payments. That isn't available through the capabilities I have. I can build your cart and check the status of existing orders.","intent":"unsupported_action","entities":{"wants_drinks":false},"cards":{},"tool_calls":[],"source":"mock","synthetic":true}

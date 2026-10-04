@@ -14,7 +14,8 @@ async def say(a, msg, sid=S):
 async def test_greet_and_help(assistant):
     assert (await say(assistant, "hi")).intent == "greet"
     r = await say(assistant, "what can you do?")
-    assert r.intent == "help" and "can't place orders" in r.reply
+    assert r.intent == "help" and "place your order once you confirm it" in r.reply
+    assert "can't cancel orders" in r.reply
 
 
 async def test_search_restaurants_then_menu_by_ordinal(assistant):
@@ -115,13 +116,6 @@ async def test_order_status_and_details(assistant):
     assert "2 × Masala Dosa" in r.reply and "₹210" in r.reply
     assert "ID" in (await say(assistant, "track my order")).reply
     assert "couldn't find" in (await say(assistant, "status of order ORD-NOPE-1")).reply
-
-
-async def test_unsupported_actions_are_honest(assistant):
-    for msg in ["checkout", "place my order", "cancel my order", "pay now"]:
-        r = await say(assistant, msg)
-        assert r.intent == "unsupported_action" and "can't place or cancel" in r.reply
-        assert r.tool_calls == []
 
 
 async def test_unknown_input(assistant):
