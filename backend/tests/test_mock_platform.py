@@ -56,6 +56,7 @@ async def test_orders(platform):
 
 async def test_unreachable_mcp_reports_error():
     import httpx
+
     from app.platform.mcp_client import MockMCPClient
     from app.platform.mock_platform import MockSwiggyPlatform
     p = MockSwiggyPlatform(MockMCPClient("http://127.0.0.1:1", client=httpx.AsyncClient(timeout=1)))

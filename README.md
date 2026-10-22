@@ -1,5 +1,11 @@
 # Swiggy AI Food Assistant
 
+[![CI](https://github.com/Sasanksurya/swiggy-ai-assistant/actions/workflows/ci.yml/badge.svg)](https://github.com/Sasanksurya/swiggy-ai-assistant/actions/workflows/ci.yml)
+
+**Stack:** FastAPI · LangGraph · LangSmith · Redis · Next.js 16 / React 19 · Web Speech API · Docker · GitHub Actions
+
+**System design:** see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) (architecture, request flow, agent graph, design decisions).
+
 AI food-ordering assistant (chat + voice) designed to integrate with the official Swiggy Developer
 Platform through authorized mechanisms. Development is zero-cost: everything runs locally.
 
@@ -13,8 +19,15 @@ operations, conversational state in memory/Redis). See docs/PHASE2.md. `POST /ap
 Phase 3a (done): **Sarah** persona + budget engine ("biryani for two under 500" -> best restaurant -> cart).
 See docs/PHASE3_SARAH.md.
 
-Not built yet: Next.js chat UI, voice (speech-to-text / text-to-speech), Kubernetes manifests (`k8s/`), Jenkinsfile (`jenkins/`),
-real Swiggy OAuth/MCP integration (Stage 2, from Swiggy's current official docs).
+Phase 4 (done): Next.js chat UI with voice (speech-to-text / text-to-speech). See docs/PHASE4_UI.md.
+
+Step A (done): confirmation-gated checkout (simulated in the mock). See docs/STEP_A_CHECKOUT.md.
+
+Phase 5 (done): GitHub Actions CI (ruff + pytest, ESLint + tsc + vitest + build, Docker image builds),
+LangSmith tracing, system-design docs.
+
+Not built yet: Google OAuth 2.0 + JWT on checkout, Kubernetes manifests, real Swiggy integration
+(Stage 2, from Swiggy's current official docs).
 
 ## Run
     cp .env.example .env
@@ -22,7 +35,16 @@ real Swiggy OAuth/MCP integration (Stage 2, from Swiggy's current official docs)
     curl localhost:8000/api/platform/info
 
 ## Test
-    cd backend && pip install -r requirements-dev.txt && python -m pytest -q
+    cd backend && pip install -r requirements-dev.txt && python -m pytest -q   # 189 tests
+    cd frontend && npm ci && npm test                                          # 80 tests
+
+CI runs the same checks on every push and pull request: `.github/workflows/ci.yml`.
+
+## Observability (LangSmith)
+1. Create a free account at https://smith.langchain.com and an API key (Settings -> API Keys).
+2. In your local `.env` (never in Git): `LANGSMITH_TRACING=true` and `LANGSMITH_API_KEY=<your key>`.
+3. Restart the backend and send a chat message. Each turn appears in project `swiggy-ai-assistant` as a
+   `sarah_chat_turn` trace with every graph node and platform tool call as child runs, tagged by `session_id`.
 
 ## Design rules
 - `MOCK_MODE=true` -> Mock MCP; `false` -> `RealSwiggyPlatform` (currently reports

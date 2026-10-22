@@ -1,7 +1,7 @@
 from functools import lru_cache
 from typing import Literal
 
-from pydantic import model_validator
+from pydantic import SecretStr, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -27,6 +27,12 @@ class Settings(BaseSettings):
     nlu_provider: Literal["rules", "ollama"] = "rules"
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2"
+
+    # Observability (LangSmith). Off by default; needs LANGSMITH_API_KEY when on.
+    langsmith_tracing: bool = False
+    langsmith_api_key: SecretStr | None = None
+    langsmith_project: str = "swiggy-ai-assistant"
+    langsmith_endpoint: str = "https://api.smith.langchain.com"
 
     @model_validator(mode="after")
     def _no_mock_in_production(self) -> "Settings":

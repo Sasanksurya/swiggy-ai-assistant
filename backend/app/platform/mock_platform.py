@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from .base import CAPABILITIES, PlatformResult, SwiggyPlatform
+from .base import CAPABILITIES, SwiggyPlatform
 from .mcp_client import MockMCPClient
 
 

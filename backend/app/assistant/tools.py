@@ -5,6 +5,7 @@ declare is NOT called and yields `unsupported_capability`; every call is logged.
 """
 from __future__ import annotations
 
+from langsmith import traceable
 from pydantic import BaseModel
 
 from ..platform.base import CAPABILITIES, PlatformResult, SwiggyPlatform, unsupported
@@ -33,7 +34,12 @@ class ToolRunner:
         else:
             if name in _SESSION_TOOLS:
                 args = {**args, "session_id": self._sid}
-            result = await getattr(self._p, name)(**args)
+            result = await self._invoke(name, args)
         self.calls.append(ToolCallLog(name=name, args=args, ok=result.ok,
                                       error_code=result.error.code if result.error else None))
         return result
+
+    async def _invoke(self, name: str, args: dict) -> PlatformResult:
+        # Each platform call becomes a "tool" child run in LangSmith (no-op when tracing is off).
+        traced = traceable(run_type="tool", name=name, metadata={"source": self._p.source})(getattr(self._p, name))
+        return await traced(**args)

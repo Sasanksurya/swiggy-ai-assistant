@@ -311,7 +311,7 @@ def build_assistant_graph(nlu_engine: NLU, assistant_name: str = "Sarah", allow_
         return {"reply": f"{verb}\n{_cart_text(res.data)}", "conv": conv, "cards": {"cart": res.data}}
 
     async def remove_from_cart(s):
-        conv, run = s["conv"], s["runner"]
+        run = s["runner"]
         t, err = await _cart_target(s)
         if err:
             return {"reply": err}

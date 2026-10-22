@@ -1,8 +1,12 @@
+import os
 import sys
 from pathlib import Path
 
 import httpx
 import pytest
+
+# Tests never send traces, even if a developer has LANGSMITH_TRACING=true in their shell.
+os.environ["LANGSMITH_TRACING"] = "false"
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "mock-mcp"))
 

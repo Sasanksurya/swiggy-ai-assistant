@@ -1,7 +1,7 @@
 """Multi-turn conversations through the real graph + mock MCP (no network)."""
-from app.assistant.session_store import InMemorySessionStore
-from app.assistant.service import AssistantService
 from app.assistant.nlu import RuleBasedNLU
+from app.assistant.service import AssistantService
+from app.assistant.session_store import InMemorySessionStore
 from app.platform.real_platform import RealSwiggyPlatform
 
 S = "t"

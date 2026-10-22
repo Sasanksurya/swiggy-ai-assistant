@@ -36,7 +36,12 @@ class AssistantService:
         sid = session_id or uuid.uuid4().hex
         conv = await self._store.get(sid)
         runner = ToolRunner(self._platform, sid)
-        out = await self._graph.ainvoke({"message": message, "conv": conv, "runner": runner})
+        out = await self._graph.ainvoke(
+            {"message": message, "conv": conv, "runner": runner},
+            # Shown in LangSmith: one trace per chat turn, grouped into a thread by session_id.
+            config={"run_name": "sarah_chat_turn", "tags": [self._platform.source],
+                    "metadata": {"session_id": sid, "assistant": self._name, "source": self._platform.source}},
+        )
         await self._store.save(out["conv"])
         n = out["nlu"]
         return ChatResponse(

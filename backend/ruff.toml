@@ -1,0 +1,8 @@
+line-length = 120
+target-version = "py312"
+
+[lint]
+# pyflakes (F), pycodestyle errors (E) and import sorting (I)
+select = ["E", "F", "I"]
+# E741: short names like `l` are used deliberately in parsers; E501: long lines are allowed in data tables
+ignore = ["E741", "E501"]
