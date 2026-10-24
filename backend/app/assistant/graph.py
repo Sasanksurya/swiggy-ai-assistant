@@ -5,6 +5,8 @@ Nothing is generated or assumed. Capabilities the platform lacks produce an hone
 """
 from __future__ import annotations
 
+import difflib
+import re
 from typing import Any, TypedDict
 
 from langgraph.graph import END, START, StateGraph
@@ -18,6 +20,7 @@ from .tools import ToolRunner
 
 MAX_QTY = 20
 MAX_LIST = 8
+ORDER_CAP_INR = 1000  # Swiggy Builders Club: food orders are capped at Rs 1000 (cash on delivery)
 
 
 class GraphState(TypedDict, total=False):
@@ -71,6 +74,16 @@ def build_assistant_graph(nlu_engine: NLU, assistant_name: str = "Sarah", allow_
         refs = [Ref(id=l["item_id"], name=l["name"], price_inr=l["unit_price_inr"])
                 for l in (res.data or {}).get("lines", [])] if res.ok else []
         return res, refs
+
+    async def _closest_query(run: ToolRunner, query: str) -> str | None:
+        """Corrects a misspelt dish word against the dish names the platform has ("biriyani" -> "biryani")."""
+        res = await run.call("search_menu", query="", available_only=False)
+        if not res.ok or not res.data:
+            return None
+        vocab = sorted({w for i in res.data for w in re.findall(r"[a-z]{3,}", i["name"].lower())})
+        words = query.lower().split()
+        fixed = [(difflib.get_close_matches(w, vocab, n=1, cutoff=0.8) or [w])[0] for w in words]
+        return " ".join(fixed) if fixed != words else None
 
     async def restaurant_names(run: ToolRunner) -> dict[str, str]:
         res = await run.call("search_restaurants")
@@ -180,6 +193,10 @@ def build_assistant_graph(nlu_engine: NLU, assistant_name: str = "Sarah", allow_
                 conv.pending = Pending(action="show_menu", candidates=m[:5])
                 opts = "\n".join(f"{i}. {c.name}" for i, c in enumerate(m[:5], 1))
                 return {"reply": f"Which restaurant?\n{opts}", "conv": conv}
+        if not target and n.ref_index and conv.last_shown == "items":  # "menu of the first one" after a dish list
+            dish = pick_by_index(conv.last_items, n.ref_index)
+            if dish and dish.restaurant_id:
+                target = Ref(id=dish.restaurant_id, name="that restaurant")
         if not target and conv.selected_restaurant_id and not n.ref_index:
             target = Ref(id=conv.selected_restaurant_id, name="this restaurant")
         if not target:
@@ -220,15 +237,22 @@ def build_assistant_graph(nlu_engine: NLU, assistant_name: str = "Sarah", allow_
         if n.max_price is not None:
             items.sort(key=lambda i: i["price_inr"])
         items = items[:MAX_LIST]
+        note = ""
+        if not items and n.query:  # maybe a typo ("biriyani"): retry once with the closest real dish word
+            fixed = await _closest_query(run, n.query)
+            if fixed:
+                res = await run.call("search_menu", query=fixed, max_price_inr=n.max_price, veg_only=n.veg is True)
+                items = [i for i in (res.data if res.ok else []) if n.veg is not False or not i["veg"]][:MAX_LIST]
+                note = f"Showing results for '{fixed}'.\n" if items else ""
         if not items:
             return {"reply": "I couldn't find any matching dishes. Try a different dish or a higher budget.",
                     "cards": {"items": []}}
         names = await restaurant_names(run)
         conv.last_items = [_item_ref(i) for i in items]
         conv.last_shown = "items"
-        lines = [f"{i}. {x['name']} — {inr(x['price_inr'])} at {names.get(x['restaurant_id'], x['restaurant_id'])}"
+        lines = [f"{i}. {x['name']} — {inr(x['price_inr'])} at {x.get('restaurant_name') or names.get(x['restaurant_id'], x['restaurant_id'])}"
                  for i, x in enumerate(items, 1)]
-        return {"reply": "Here's what I found:\n" + "\n".join(lines) +
+        return {"reply": note + "Here's what I found:\n" + "\n".join(lines) +
                          "\nSay 'add the first one' or 'add 2 <dish>'.",
                 "conv": conv, "cards": {"items": items}}
 
@@ -536,6 +560,9 @@ def build_assistant_graph(nlu_engine: NLU, assistant_name: str = "Sarah", allow_
         if not cart["lines"]:
             return {"reply": "Your cart is empty. Tell me what you'd like first, for example "
                              "'biryani for two under 500'."}
+        if cart["total_inr"] > ORDER_CAP_INR:  # Swiggy's documented cap; refuse before asking for an address
+            return {"reply": f"Swiggy limits these orders to {inr(ORDER_CAP_INR)}, and your cart is "
+                             f"{inr(cart['total_inr'])}. Remove something and ask me again."}
         if not conv.address_id:
             ares = await run.call("get_addresses")
             if not ares.ok:
@@ -603,10 +630,13 @@ def build_assistant_graph(nlu_engine: NLU, assistant_name: str = "Sarah", allow_
 
     async def cancel_order(s):
         demo = " (This demo has no real orders.)" if s["runner"]._p.source == "mock" else ""
-        return {"reply": "I can't cancel orders. To cancel a Swiggy order, please call Swiggy customer care "
-                         f"at 080-67466729.{demo}"}
+        return {"reply": "I can't cancel orders. To cancel a Swiggy order, use Help on that order in the "
+                         f"Swiggy app.{demo}"}
 
     async def unsupported_action(s):
+        if re.search(r"\btables?\b|reserv|dine", s["message"], re.I):
+            return {"reply": "I only handle food delivery, so I can't book tables or dine-out. I can find a "
+                             "restaurant and deliver the food to you."}
         return {"reply": "I can't help with payments or refunds. I can build your cart and, once you confirm it, "
                          "place the order as cash on delivery."}
 

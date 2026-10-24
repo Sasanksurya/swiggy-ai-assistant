@@ -73,7 +73,7 @@ def test_menu_dedupes_and_keeps_required_fields_only():
     assert restaurant["id"] == "101" and restaurant["price_for_two_inr"] == 500 and not more
     assert [i["id"] for i in items] == ["1", "2", "3"]  # dish "1" appears in two categories
     chicken, paneer, mutton = items
-    assert chicken == {"id": "1", "restaurant_id": "101", "name": "Chicken Biryani", "price_inr": 369, "veg": False,
+    assert chicken == {"id": "1", "restaurant_id": "101", "restaurant_name": "Test Biryani", "name": "Chicken Biryani", "price_inr": 369, "veg": False,
                        "category": "Recommended", "available": True, "has_options": True}
     assert paneer["veg"] is True and mutton["available"] is False
     assert "address" not in str(restaurant)  # raw street address is never copied through

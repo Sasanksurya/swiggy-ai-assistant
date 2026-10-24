@@ -113,7 +113,7 @@ def map_menu(payload: Any) -> tuple[dict, list[dict], bool]:
             if iid is None or name is None or price is None or iid in seen or not isinstance(raw.get("isVeg"), bool):
                 continue  # missing a field the agent needs, or the same dish repeated under another category
             seen.add(iid)
-            items.append({"id": iid, "restaurant_id": restaurant["id"], "name": name, "price_inr": price,
+            items.append({"id": iid, "restaurant_id": restaurant["id"], "restaurant_name": restaurant["name"], "name": name, "price_inr": price,
                           "veg": raw["isVeg"], "category": title, "available": raw.get("inStock") in (1, True),
                           "has_options": bool(raw.get("hasVariants") or raw.get("hasAddons"))})
     return restaurant, items, payload.get("hasMore") is True

@@ -18,7 +18,7 @@ every order is **simulated** and labelled as such.
 - Orders can be switched off per environment (`ALLOW_REAL_ORDERS`, default **false** for real Swiggy; the mock
   always allows its simulated orders).
 - The mock enforces the documented order cap (₹1000) and cash-on-delivery only, like the real platform.
-- Cancellation is not a platform capability: Sarah sends the user to Swiggy customer care (080-67466729).
+- Cancellation is not a platform capability: Sarah points the user to Help on that order in the Swiggy app (no phone number: none comes from a tool, so Sarah does not quote one).
 - Mock addresses have no phone numbers (the real API returns one per address; that is PII we must not keep).
 
 ## Code

@@ -37,6 +37,12 @@ jobs:
         run: ruff check .
       - name: Test (pytest)
         run: python -m pytest -q --junitxml=pytest-report.xml
+      - name: Agent evaluation (scoreboard in the run summary)
+        run: |
+          status=0
+          python -m evals.run --out eval-report.md || status=$?
+          cat eval-report.md >> "$GITHUB_STEP_SUMMARY"
+          exit $status
       - name: Upload test report
         if: always()
         uses: actions/upload-artifact@v4

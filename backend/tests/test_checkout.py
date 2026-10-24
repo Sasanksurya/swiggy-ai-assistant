@@ -1,4 +1,7 @@
+
 """Sarah's checkout: address -> full summary -> explicit yes -> order. Includes the ways a 'yes' must NOT order."""
+import re
+
 from app.assistant.nlu import RuleBasedNLU
 from app.assistant.service import AssistantService
 from app.assistant.session_store import InMemorySessionStore
@@ -162,13 +165,13 @@ async def test_cart_changed_behind_the_summary_forces_a_new_confirmation(assista
     assert placed(r) and "Total ₹160" in r.reply  # 90 + 40 + 30 delivery, the amount the user last saw
 
 
-async def test_the_order_cap_is_explained_and_nothing_is_lost(assistant):
-    await say(assistant, "add 3 pepperoni pizza")
-    await say(assistant, "checkout")
-    await say(assistant, "1")
+async def test_the_order_cap_is_explained_up_front_and_nothing_is_lost(assistant):
+    await say(assistant, "add 3 pepperoni pizza")  # 3 x 340 + 30 delivery = 1050
+    r = await say(assistant, "checkout")
+    assert "limits these orders to ₹1000" in r.reply and "₹1050" in r.reply and "Remove something" in r.reply
+    assert "get_addresses" not in [c.name for c in r.tool_calls]  # refused before asking for an address
     r = await say(assistant, "yes")
-    assert "limited to ₹1000" in r.reply and "Remove something" in r.reply
-    assert len(await lines(assistant)) == 1
+    assert not placed(r) and len(await lines(assistant)) == 1
 
 
 async def test_a_dropped_connection_never_claims_success(platform):
@@ -197,7 +200,8 @@ async def test_real_platform_without_ordering_never_pretends():
 
 async def test_cancellation_is_redirected_to_swiggy_customer_care(assistant):
     r = await say(assistant, "cancel my order")
-    assert r.intent == "cancel_order" and "080-67466729" in r.reply and "no real orders" in r.reply
+    assert r.intent == "cancel_order" and "Swiggy app" in r.reply and "no real orders" in r.reply
+    assert not re.search(r"\d{3}-\d{5,}", r.reply)  # no phone number that no tool returned
     assert r.tool_calls == []
 
 

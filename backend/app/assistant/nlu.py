@@ -76,7 +76,9 @@ _SEARCH_WORDS = re.compile(r"\b(find|show|search|suggest|recommend|looking|what|
 _CANCEL = re.compile(r"\b(cancel (my |the |this )?order|refund)\b", re.I)
 _PLACE = re.compile(r"\b(checkout|check out|pay now|pay for (my |the )?order|place (my |the |an? )?order|"
                     r"confirm (my |the )?order|buy now)\b", re.I)
-_UNSUPPORTED = re.compile(r"\b(payment|pay)\b", re.I)  # other payment talk we do not handle
+_UNSUPPORTED = re.compile(  # things Sarah does not do: payment talk, and dine-out (she only handles delivery)
+    r"\b(payment|pay)\b|\b(book|reserve)\b.*\btables?\b|\btables?\b.*\b(booking|reservation)\b"
+    r"|\breservations?\b|\bdine[- ]?(in|out)\b", re.I)
 
 
 def _strip_tokens(text: str) -> str:
@@ -192,6 +194,8 @@ class RuleBasedNLU(NLU):
         if re.search(r"\b(change|update|modify|make (it|that)|set)\b", t) and (r.quantity is not None or r.ref_index):
             return "update_cart"
         plan_words = re.search(r"\b(combos?|meals?|plan)\b", t)
+        if re.search(r"\b(restaurants?|outlets?|eateries)\b", t) and not plan_words and not _STRICT_ADD.search(t):
+            return "search_restaurants"  # "restaurants under 300 for two" is a search, not a meal plan
         if (r.people is not None and (r.max_price is not None or r.query or r.wants_drinks)) or \
                 (r.max_price is not None and plan_words):
             return "plan_meal"

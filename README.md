@@ -26,11 +26,13 @@ Step A (done): confirmation-gated checkout (simulated in the mock). See docs/STE
 Phase 5 (done): GitHub Actions CI (ruff + pytest, ESLint + tsc + vitest + build, Docker image builds),
 LangSmith tracing, system-design docs.
 
-Phase 6 (in progress): official Swiggy Builders Club connection. Built: OAuth 2.1 + PKCE sign-in, token storage
-and refresh, MCP client with Swiggy's retry rules, read-only `doctor`. Pending Swiggy access: mapping real
-responses. See docs/SWIGGY_ACCESS.md.
+Phase 6 (read-only done): official Swiggy Builders Club connection. OAuth 2.1 + PKCE sign-in, token storage and
+refresh, MCP client with Swiggy's retry rules, and live restaurant search, menus and addresses mapped from recorded
+real responses. Cart and ordering on the real platform are not enabled yet. See docs/SWIGGY_ACCESS.md.
 
-Not built yet: AWS deployment, agent evaluation suite, Kubernetes manifests.
+Phase 7 (done): agent evaluation suite, run in CI. See [docs/EVALUATION.md](docs/EVALUATION.md).
+
+Not built yet: AWS deployment, Kubernetes manifests.
 
 ## Run
     cp .env.example .env
@@ -38,7 +40,8 @@ Not built yet: AWS deployment, agent evaluation suite, Kubernetes manifests.
     curl localhost:8000/api/platform/info
 
 ## Test
-    cd backend && pip install -r requirements-dev.txt && python -m pytest -q   # 230 tests
+    cd backend && pip install -r requirements-dev.txt && python -m pytest -q   # 264 tests
+    cd backend && python -m evals.run                                          # agent evaluation scoreboard
     cd frontend && npm ci && npm test                                          # 80 tests
 
 CI runs the same checks on every push and pull request: `.github/workflows/ci.yml`.
@@ -50,8 +53,8 @@ CI runs the same checks on every push and pull request: `.github/workflows/ci.ym
    `sarah_chat_turn` trace with every graph node and platform tool call as child runs, tagged by `session_id`.
 
 ## Design rules
-- `MOCK_MODE=true` -> Mock MCP; `false` -> `RealSwiggyPlatform` (currently reports
-  `unsupported_capability` for everything; no endpoints or tools are invented).
+- `MOCK_MODE=true` -> Mock MCP; `false` -> `RealSwiggyPlatform` (read-only: search, menus, addresses; everything
+  else reports `unsupported_capability`, nothing is invented).
 - Production refuses to start with `MOCK_MODE=true`.
 - Every mock response carries `synthetic: true`; the UI must show the banner from `/api/platform/info`.
 - Agents and business logic depend only on `app/platform/base.py`.
