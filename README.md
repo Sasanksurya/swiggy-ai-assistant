@@ -26,8 +26,11 @@ Step A (done): confirmation-gated checkout (simulated in the mock). See docs/STE
 Phase 5 (done): GitHub Actions CI (ruff + pytest, ESLint + tsc + vitest + build, Docker image builds),
 LangSmith tracing, system-design docs.
 
-Not built yet: Google OAuth 2.0 + JWT on checkout, Kubernetes manifests, real Swiggy integration
-(Stage 2, from Swiggy's current official docs).
+Phase 6 (in progress): official Swiggy Builders Club connection. Built: OAuth 2.1 + PKCE sign-in, token storage
+and refresh, MCP client with Swiggy's retry rules, read-only `doctor`. Pending Swiggy access: mapping real
+responses. See docs/SWIGGY_ACCESS.md.
+
+Not built yet: AWS deployment, agent evaluation suite, Kubernetes manifests.
 
 ## Run
     cp .env.example .env
@@ -35,7 +38,7 @@ Not built yet: Google OAuth 2.0 + JWT on checkout, Kubernetes manifests, real Sw
     curl localhost:8000/api/platform/info
 
 ## Test
-    cd backend && pip install -r requirements-dev.txt && python -m pytest -q   # 189 tests
+    cd backend && pip install -r requirements-dev.txt && python -m pytest -q   # 230 tests
     cd frontend && npm ci && npm test                                          # 80 tests
 
 CI runs the same checks on every push and pull request: `.github/workflows/ci.yml`.

@@ -31,7 +31,8 @@ flowchart LR
     G -.->|"unknown intents only"| LLM["Ollama LLM (optional)<br/>JSON-only intent classifier"]
     SVC <-->|"session state, TTL"| R[("Redis")]
     PL -->|"MOCK_MODE=true"| MCP["Mock Swiggy MCP (:8100)<br/>synthetic data"]
-    PL -.->|"MOCK_MODE=false"| REAL["RealSwiggyPlatform<br/>(Stage 2: official Swiggy APIs)"]
+    PL -.->|"MOCK_MODE=false"| REAL["RealSwiggyPlatform<br/>(response mapping pending)"]
+    REAL -.->|"OAuth 2.1 + PKCE, MCP over HTTPS"| SW["Swiggy Builders Club<br/>mcp.swiggy.com/food"]
     G -.->|"traces (opt-in)"| LS["LangSmith"]
     API -.->|"readiness check"| PG[("Postgres<br/>reserved for users/orders")]
 ```
@@ -94,6 +95,7 @@ NLU picks an intent from a fixed list, and the graph maps it to exactly one node
 | ToolRunner | Python | Only declared platform capabilities can be called; every call logged and returned to the UI |
 | Platform | `SwiggyPlatform` interface | Mock (MCP over HTTP) or Real; business logic never depends on a concrete platform |
 | Session store | Redis (in-memory for tests) | Conversation state with TTL |
+| Swiggy connection | httpx, OAuth 2.1 + PKCE | Sign-in, rotating tokens, MCP client with Swiggy's retry rules (see SWIGGY_ACCESS.md) |
 | Observability | LangSmith | Per-turn traces with tool child runs, tagged by session id |
 | CI | GitHub Actions | ruff + pytest, ESLint + tsc + vitest + build, Docker image builds |
 
@@ -123,7 +125,7 @@ NLU picks an intent from a fixed list, and the graph maps it to exactly one node
 - **Health vs readiness.** `/health` is liveness. `/health/ready` checks Postgres and Redis, which
   fits Kubernetes probes.
 - **Next steps for production:** Google OAuth 2.0 + JWT on the checkout endpoints, persisting orders
-  in Postgres, rate limiting per session, Kubernetes manifests, and the official Swiggy platform adapter.
+  in Postgres, rate limiting per session, Kubernetes manifests, and mapping Swiggy's real responses once access is granted.
 
 ## 8. Testing strategy
 

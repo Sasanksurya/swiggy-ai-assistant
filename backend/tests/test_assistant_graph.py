@@ -145,5 +145,5 @@ async def test_real_mode_never_fabricates():
                 "status of order ORD-DEMO-1002"]:
         r = await a.chat(msg, "x")
         assert r.synthetic is False and r.source == "swiggy"
-        assert "Sorry" in r.reply and "Stage 2" in r.reply
+        assert "Sorry" in r.reply and "not connected" in r.reply
         assert r.cards == {} and all(c.error_code == "unsupported_capability" for c in r.tool_calls)

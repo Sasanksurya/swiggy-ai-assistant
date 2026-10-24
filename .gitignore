@@ -9,3 +9,7 @@ node_modules/
 .next/
 *.log
 .DS_Store
+
+# Swiggy credentials and recorded responses never go to Git
+.swiggy_tokens.json
+fixtures_private/

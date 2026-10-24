@@ -58,3 +58,40 @@ async def chat_api(assistant, platform):
                                  base_url="http://test") as c:
         yield c
     backend_app.dependency_overrides.clear()
+
+
+# ----- fake Swiggy (OAuth + Food MCP) used by the swiggy connection-layer tests -----
+@pytest.fixture
+def fake_swiggy():
+    from tests.fake_swiggy import FakeSwiggy
+    return FakeSwiggy()
+
+
+@pytest.fixture
+def oauth(fake_swiggy):
+    from app.platform.swiggy.oauth import SwiggyOAuth
+    from app.platform.swiggy.token_store import MemoryTokenStore
+    http = httpx.AsyncClient(transport=httpx.ASGITransport(app=fake_swiggy.app))
+    return SwiggyOAuth("http://swiggy.test", "http://localhost:8000/api/swiggy/callback",
+                       MemoryTokenStore(), client=http)
+
+
+@pytest.fixture
+def browser(fake_swiggy):
+    """Plays the user's browser: opens the authorize URL and reports where Swiggy redirects back to."""
+    from urllib.parse import parse_qs, urlparse
+
+    async def go(authorize_url: str) -> tuple[str, str]:
+        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=fake_swiggy.app)) as c:
+            r = await c.get(authorize_url)
+        assert r.status_code == 302, r.text
+        q = parse_qs(urlparse(r.headers["location"]).query)
+        return q["code"][0], q["state"][0]
+    return go
+
+
+@pytest.fixture
+async def connected(oauth, browser):
+    code, state = await browser(await oauth.begin())
+    await oauth.complete(code, state)
+    return oauth

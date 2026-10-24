@@ -191,7 +191,7 @@ async def test_orders_can_be_switched_off(platform):
 async def test_real_platform_without_ordering_never_pretends():
     a = service(RealSwiggyPlatform())
     r = await say(a, "checkout")
-    assert "Sorry" in r.reply and "Stage 2" in r.reply and not placed(r)
+    assert "Sorry" in r.reply and "not connected" in r.reply and not placed(r)
     assert r.synthetic is False and r.cards == {}
 
 

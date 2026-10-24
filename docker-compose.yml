@@ -32,7 +32,7 @@ services:
       - .env.example
     environment:
       APP_ENV: development
-      MOCK_MODE: "true"
+      MOCK_MODE: ${MOCK_MODE:-true}
       MOCK_MCP_URL: http://mock-mcp:8100
       DATABASE_URL: postgresql://${POSTGRES_USER:-swiggy}:${POSTGRES_PASSWORD:-change-me-locally}@postgres:5432/${POSTGRES_DB:-swiggy_assistant}
       REDIS_URL: redis://redis:6379/0
@@ -43,6 +43,14 @@ services:
       LANGSMITH_TRACING: ${LANGSMITH_TRACING:-false}
       LANGSMITH_API_KEY: ${LANGSMITH_API_KEY:-}
       LANGSMITH_PROJECT: ${LANGSMITH_PROJECT:-swiggy-ai-assistant}
+      # Real Swiggy (Builders Club). Only used when MOCK_MODE=false; tokens persist in the swiggy_data volume
+      ALLOW_REAL_ORDERS: ${ALLOW_REAL_ORDERS:-false}
+      SWIGGY_BASE_URL: ${SWIGGY_BASE_URL:-https://mcp.swiggy.com}
+      SWIGGY_REDIRECT_URI: ${SWIGGY_REDIRECT_URI:-http://localhost:8000/api/swiggy/callback}
+      SWIGGY_TOKEN_PATH: /data/swiggy_tokens.json
+      SWIGGY_CONNECT_ENABLED: ${SWIGGY_CONNECT_ENABLED:-true}
+    volumes:
+      - swiggy_data:/data
     ports:
       - "8000:8000"
     depends_on:
@@ -55,3 +63,4 @@ services:
 
 volumes:
   pgdata:
+  swiggy_data:

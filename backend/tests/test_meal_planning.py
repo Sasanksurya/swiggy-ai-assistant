@@ -143,7 +143,7 @@ async def test_sarah_persona(assistant):
 async def test_real_mode_plans_nothing():
     a = AssistantService(RealSwiggyPlatform(), RuleBasedNLU(), InMemorySessionStore())
     r = await a.chat("biryani for two under 500", "x")
-    assert r.synthetic is False and "Sorry" in r.reply and "Stage 2" in r.reply and r.cards == {}
+    assert r.synthetic is False and "Sorry" in r.reply and "not connected" in r.reply and r.cards == {}
 
 
 async def test_reply_is_speakable_each_dish_named_once(assistant):

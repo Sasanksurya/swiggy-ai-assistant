@@ -28,6 +28,12 @@ class Settings(BaseSettings):
     ollama_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2"
 
+    # Swiggy Builders Club (https://mcp.swiggy.com/builders/docs/). Used when MOCK_MODE=false.
+    swiggy_base_url: str = "https://mcp.swiggy.com"  # staging: https://mcp-staging.swiggy.com
+    swiggy_redirect_uri: str = "http://localhost:8000/api/swiggy/callback"  # must be allowlisted by Swiggy (localhost is allowed for development)
+    swiggy_token_path: str = ".swiggy_tokens.json"
+    swiggy_connect_enabled: bool = True  # set false on any shared or public deployment
+
     # Observability (LangSmith). Off by default; needs LANGSMITH_API_KEY when on.
     langsmith_tracing: bool = False
     langsmith_api_key: SecretStr | None = None
