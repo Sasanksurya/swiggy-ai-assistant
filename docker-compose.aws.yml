@@ -2,12 +2,25 @@
 #   docker compose -f docker-compose.yml -f docker-compose.frontend.yml -f docker-compose.aws.yml up --build -d
 #
 # Safe by design for a server on the internet:
-# - only the website is published (port 80); backend, mock, Redis and Postgres are reachable only inside Docker
+# - only Caddy is published (ports 80 and 443, HTTPS with a free certificate); the website, backend, mock, Redis
+#   and Postgres are reachable only inside Docker
 # - demo data only: MOCK_MODE=true, Swiggy sign-in routes switched off, real orders off
 # Needs Docker Compose 2.24.4+ for `!reset` and `!override` (the setup script installs a current version).
 services:
+  caddy:
+    image: caddy:2-alpine
+    ports: ["80:80", "443:443"]   # 80 is needed for the certificate check and redirects to https
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:?set SITE_ADDRESS in .env (deploy/setup-ec2.sh does this)}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data            # certificates survive restarts (avoids Let's Encrypt rate limits)
+      - caddy_config:/config
+    depends_on: [frontend]
+    restart: unless-stopped
+
   frontend:
-    ports: !override ["80:3000"]
+    ports: !reset []
     restart: unless-stopped
 
   backend:
@@ -29,3 +42,7 @@ services:
 
   redis:
     restart: unless-stopped
+
+volumes:
+  caddy_data:
+  caddy_config:

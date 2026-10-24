@@ -1,0 +1,12 @@
+# HTTPS in front of Sarah. Caddy gets and renews a free Let's Encrypt certificate by itself.
+# SITE_ADDRESS comes from .env, set by deploy/setup-ec2.sh, e.g. 16-178-134-110.sslip.io
+{$SITE_ADDRESS} {
+	encode gzip
+	reverse_proxy frontend:3000
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+}
