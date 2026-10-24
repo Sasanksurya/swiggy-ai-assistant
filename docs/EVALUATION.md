@@ -56,6 +56,13 @@ were real problems, and fixing them brought every metric to 100%:
 | "biriyani" (typo) found nothing | one retry with the closest real dish word, and Sarah says what she searched for |
 | the cancel reply quoted a customer-care phone number that no tool returned and could not be verified | Sarah points to Help in the Swiggy app instead; the case now forbids phone numbers |
 
+## Cases from real use
+
+The `voice` cases come from real speech-to-text output. "Sara order for me ne biryani for 2 members with any
+budget of 500" failed because the dish search kept "sara ne biryani". Sarah now ignores her own name and common
+Hindi/Hinglish filler words ("ne", "mein", "mujhe ... chahiye"), and if a dish search still finds nothing she
+retries once with only the words that match real dishes.
+
 ## Limits
 
 - The cases run on synthetic mock data, so they test Sarah's behaviour, not Swiggy's live data.

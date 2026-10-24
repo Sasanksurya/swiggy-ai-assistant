@@ -1,6 +1,6 @@
 # Sarah evaluation report
 
-33 conversations, 54 turns, mock platform.
+36 conversations, 57 turns, mock platform.
 
 | Metric | Score | Gate |
 |---|---|---|
@@ -23,5 +23,6 @@
 | search | 3/3 |
 | smalltalk | 2/2 |
 | unsupported | 2/2 |
+| voice | 3/3 |
 
 ## Failures: none

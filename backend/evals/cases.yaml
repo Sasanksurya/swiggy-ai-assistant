@@ -211,3 +211,22 @@
   category: robustness
   turns:
     - {say: "biriyani", calls: search_menu, reply_has: ["Biryani"]}
+
+# ---------- voice input (phrasings recorded from real speech-to-text) ----------
+- id: voice_plan_with_name_and_filler
+  category: voice
+  turns:
+    - {say: "Sara order for me ne biryani for 2 members with any budget of 500", intent: plan_meal,
+       calls: add_to_cart, reply_not: ["couldn't find"]}
+
+- id: voice_plan_hinglish_filler
+  category: voice
+  turns:
+    # The only dum biryani is Rs 280, so two cost Rs 560: Sarah must say so honestly, not pretend it fits.
+    - {say: "Order Mein Dum Biryani for 2 members. Budget around 500.", intent: plan_meal,
+       not_calls: add_to_cart, reply_has: ["dum biryani", "₹560"], reply_not: ["couldn't find any"]}
+
+- id: voice_search_with_name
+  category: voice
+  turns:
+    - {say: "Sarah show me pizza under 300", intent: search_menu, reply_has: ["Margherita Pizza"]}

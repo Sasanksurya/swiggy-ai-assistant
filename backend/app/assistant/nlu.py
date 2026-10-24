@@ -65,7 +65,11 @@ under below within upto up max maximum budget rs inr rupees less than and more o
 non-veg first second third fourth fifth last quantity qty x pcs pc piece pieces plates plate
 people person persons ppl guests pax members combo combos meal meals around about approx approximately roughly
 range i'm im i'll ill i've hey hello hi hii ok okay namaste drink drinks cola coke cokes pepsi thums beverage
-beverages soft juice lassi use switch go choose pick plan""".split())
+beverages soft juice lassi use switch go choose pick plan
+sarah sara sarahs sera hey ok
+ne mein mujhe chahiye karo kar dena dijiye hai ka ki ke ko liye wala wali bhai yaar""".split())
+# The second-to-last line is the assistant's own name: voice input often starts with "Sarah, ...".
+# The last line is common Hindi/Hinglish filler from speech-to-text ("biryani mein", "mujhe ... chahiye").
 
 _ONE_PRONOUN_PREV = {"the", "that", "this", "which", "first", "second", "third", "fourth", "fifth", "last"}
 

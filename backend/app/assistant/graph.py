@@ -76,14 +76,15 @@ def build_assistant_graph(nlu_engine: NLU, assistant_name: str = "Sarah", allow_
         return res, refs
 
     async def _closest_query(run: ToolRunner, query: str) -> str | None:
-        """Corrects a misspelt dish word against the dish names the platform has ("biriyani" -> "biryani")."""
+        """Keeps only the words that match real dish words, correcting small typos: "biriyani" -> "biryani",
+        "sara ne biryani" (speech-to-text) -> "biryani". None if nothing changes or nothing is left."""
         res = await run.call("search_menu", query="", available_only=False)
         if not res.ok or not res.data:
             return None
         vocab = sorted({w for i in res.data for w in re.findall(r"[a-z]{3,}", i["name"].lower())})
         words = query.lower().split()
-        fixed = [(difflib.get_close_matches(w, vocab, n=1, cutoff=0.8) or [w])[0] for w in words]
-        return " ".join(fixed) if fixed != words else None
+        kept = [m[0] for w in words if (m := difflib.get_close_matches(w, vocab, n=1, cutoff=0.8))]
+        return " ".join(kept) if kept and kept != words else None
 
     async def restaurant_names(run: ToolRunner) -> dict[str, str]:
         res = await run.call("search_restaurants")
@@ -442,6 +443,13 @@ def build_assistant_graph(nlu_engine: NLU, assistant_name: str = "Sarah", allow_
         if not mres.ok:
             return {"reply": _fail(mres, "search the menu")}
         mains = [i for i in mres.data if mr.veg is not False or not i["veg"]]
+        if not mains:  # maybe extra words from voice input or a typo: retry once with the real dish words
+            fixed = await _closest_query(run, mr.query)
+            if fixed:
+                again = await run.call("search_menu", query=fixed, veg_only=mr.veg is True)
+                if again.ok:
+                    mains = [i for i in again.data if mr.veg is not False or not i["veg"]]
+                    mr.query = fixed
         drinks: list[dict] = []
         if mr.wants_drinks:
             dres = await run.call("search_menu", query=mr.drink_query or "beverage")
