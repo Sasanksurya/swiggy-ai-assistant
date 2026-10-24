@@ -118,3 +118,38 @@ def test_file_store_roundtrip_is_private_and_hides_tokens(tmp_path):
     assert FileTokenStore(tmp_path / "missing.json").load() == StoredAuth()
     path.write_text("not json")
     assert store.load() == StoredAuth()
+
+
+async def test_sign_in_without_refresh_token_still_connects(oauth, browser, fake_swiggy):
+    fake_swiggy.omit_refresh_token = True  # seen with the real server on a repeat sign-in
+    code, state = await browser(await oauth.begin())
+    await oauth.complete(code, state)
+    assert oauth.is_connected()
+    assert (await oauth.get_access_token()).startswith("at-")
+
+
+async def test_repeat_sign_in_without_refresh_token_keeps_the_old_one(connected, browser, fake_swiggy):
+    old = connected._store.load().tokens.refresh_token
+    assert old
+    fake_swiggy.omit_refresh_token = True
+    code, state = await browser(await connected.begin())
+    await connected.complete(code, state)
+    assert connected._store.load().tokens.refresh_token == old
+
+
+async def test_expired_session_without_refresh_token_asks_to_sign_in_again(oauth, browser, fake_swiggy):
+    fake_swiggy.omit_refresh_token = True
+    code, state = await browser(await oauth.begin())
+    await oauth.complete(code, state)
+    oauth._clock = lambda: 10**10  # far in the future: the 5 day access token has run out
+    with pytest.raises(NotConnected):
+        await oauth.get_access_token()
+    assert fake_swiggy.refresh_calls == 0 and not oauth.is_connected()
+
+
+async def test_malformed_token_response_is_a_clean_error_not_a_crash(oauth, browser, fake_swiggy):
+    fake_swiggy.broken_token_body = True
+    code, state = await browser(await oauth.begin())
+    with pytest.raises(OAuthError):
+        await oauth.complete(code, state)
+    assert not oauth.is_connected()

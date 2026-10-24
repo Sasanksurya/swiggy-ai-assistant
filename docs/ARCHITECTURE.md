@@ -31,7 +31,7 @@ flowchart LR
     G -.->|"unknown intents only"| LLM["Ollama LLM (optional)<br/>JSON-only intent classifier"]
     SVC <-->|"session state, TTL"| R[("Redis")]
     PL -->|"MOCK_MODE=true"| MCP["Mock Swiggy MCP (:8100)<br/>synthetic data"]
-    PL -.->|"MOCK_MODE=false"| REAL["RealSwiggyPlatform<br/>(response mapping pending)"]
+    PL -.->|"MOCK_MODE=false"| REAL["RealSwiggyPlatform<br/>(read-only: search, menus, addresses)"]
     REAL -.->|"OAuth 2.1 + PKCE, MCP over HTTPS"| SW["Swiggy Builders Club<br/>mcp.swiggy.com/food"]
     G -.->|"traces (opt-in)"| LS["LangSmith"]
     API -.->|"readiness check"| PG[("Postgres<br/>reserved for users/orders")]

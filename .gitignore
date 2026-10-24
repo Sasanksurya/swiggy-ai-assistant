@@ -13,3 +13,6 @@ node_modules/
 # Swiggy credentials and recorded responses never go to Git
 .swiggy_tokens.json
 fixtures_private/
+
+# Output of the Swiggy doctor (even redacted, keep it out of Git)
+swiggy_doctor_output*.txt

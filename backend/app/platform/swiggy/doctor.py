@@ -18,15 +18,20 @@ import sys
 from typing import Any
 
 from ...config import get_settings
-from .mcp_http import McpError, McpHttpClient
+from .mcp_http import McpError, McpHttpClient, McpToolError
 from .runtime import food_mcp_url, get_oauth
 
-READ_ONLY_TOOLS = frozenset({"get_addresses", "search_restaurants", "get_restaurant_menu", "get_food_cart"})
+# Read-only by name and by Swiggy's docs: they look things up and never change a cart, address or order.
+# Every other tool (update_food_cart, place_food_order, flush_food_cart, apply_food_coupon, create_address,
+# delete_address, ...) is refused by ReadOnlyTools, whatever the caller asks for.
+READ_ONLY_TOOLS = frozenset({"get_addresses", "search_restaurants", "get_restaurant_menu", "get_food_cart",
+                             "search_menu", "get_food_orders", "fetch_food_coupons"})
+MAX_DESCRIPTION = 300
 
 _SENSITIVE_WORDS = frozenset({
     "phone", "mobile", "email", "lat", "lng", "lon", "latitude", "longitude", "address", "landmark", "pin",
     "pincode", "zip", "user", "customer", "token", "secret", "password", "otp", "session", "house", "flat",
-    "street"})
+    "street", "tid", "sid", "device", "deviceid"})
 MAX_LIST_ITEMS = 3
 MAX_STRING = 160
 
@@ -90,9 +95,60 @@ def find_first(value: Any, keys: tuple[str, ...]) -> Any:
     return None
 
 
+def describe_tools(listing: list[dict]) -> str:
+    """Plain-text summary of Swiggy's tools. Schemas describe inputs only, so nothing here is personal."""
+    lines = []
+    for t in listing:
+        schema = t.get("inputSchema") or {}
+        props = schema.get("properties") or {}
+        required = set(schema.get("required") or [])
+        lines.append(f"\n* {t.get('name')}")
+        desc = " ".join(str(t.get("description", "")).split())
+        if desc:
+            lines.append(f"    {desc[:MAX_DESCRIPTION]}")
+        for name, spec in props.items():
+            kind = spec.get("type", "?")
+            if "enum" in spec:
+                kind += " one of " + "/".join(map(str, spec["enum"]))
+            mark = "REQUIRED" if name in required else "optional"
+            lines.append(f"    - {name} ({kind}, {mark})")
+    return "\n".join(lines)
+
+
+def schema_args(schema: dict, known: dict[str, Any]) -> tuple[dict, list[str]]:
+    """Builds call arguments from a tool's own input schema. Returns (arguments, missing required names).
+    Only values we already hold are filled in (addressId, restaurantId, query), nothing is invented."""
+    props = (schema or {}).get("properties") or {}
+    args = {k: known[k] for k in props if k in known and known[k] is not None}
+    missing = [r for r in (schema or {}).get("required") or [] if r not in args]
+    return args, missing
+
+
+def first_open_restaurant_id(value: Any) -> Any:
+    """Id of the first restaurant whose availabilityStatus is OPEN (else the first restaurant id)."""
+    if isinstance(value, dict):
+        if value.get("availabilityStatus") == "OPEN" and value.get("id") not in (None, ""):
+            return value["id"]
+        for v in value.values():
+            found = first_open_restaurant_id(v)
+            if found is not None:
+                return found
+    elif isinstance(value, list):
+        for v in value:
+            found = first_open_restaurant_id(v)
+            if found is not None:
+                return found
+    return None
+
+
 def _show(title: str, data: Any, *, strict: bool = False) -> None:
     print(f"\n=== {title} ===")
     print(json.dumps(redact(data, strict=strict), indent=2, ensure_ascii=False))
+
+
+# (tool, show strictly?) in the order they are tried; each call is built from that tool's own schema
+_PLAN = (("search_restaurants", False), ("get_restaurant_menu", False), ("search_menu", False),
+         ("get_food_cart", False), ("fetch_food_coupons", False), ("get_food_orders", True))
 
 
 async def run(query: str = "biryani") -> int:
@@ -108,21 +164,31 @@ async def run(query: str = "biryani") -> int:
     tools = ReadOnlyTools(client)
     try:
         listing = await client.list_tools()
-        _show("tools Swiggy offers (names and input schemas)",
-              [{"name": t.get("name"), "inputSchema": t.get("inputSchema")} for t in listing])
+        print(f"\n=== {len(listing)} tools Swiggy offers (inputs only, no personal data) ===")
+        print(describe_tools(listing))
+        schemas = {t.get("name"): t.get("inputSchema") or {} for t in listing}
+
         addresses = await tools.call("get_addresses")
         _show("get_addresses (all text blanked)", addresses, strict=True)
-        address_id = find_first(addresses, ("addressId", "address_id", "id"))
-        if address_id is None:
-            print("\nCould not find an address id in that response; skipping the calls that need one.")
-            return 0
-        restaurants = await tools.call("search_restaurants", {"addressId": address_id, "query": query})
-        _show(f"search_restaurants query={query!r}", restaurants)
-        restaurant_id = find_first(restaurants, ("restaurantId", "restaurant_id", "id"))
-        if restaurant_id is not None:
-            _show("get_restaurant_menu (first restaurant)",
-                  await tools.call("get_restaurant_menu", {"restaurantId": restaurant_id}))
-        _show("get_food_cart", await tools.call("get_food_cart"))
+        known: dict[str, Any] = {
+            "addressId": find_first(addresses, ("defaultAddressId",)) or find_first(addresses, ("id",)),
+            "query": query}
+        for tool, strict in _PLAN:
+            if tool not in schemas:
+                print(f"\n--- {tool}: not offered by this server, skipped")
+                continue
+            args, missing = schema_args(schemas[tool], known)
+            if missing:
+                print(f"\n--- {tool}: skipped, still missing required {missing}")
+                continue
+            try:
+                result = await tools.call(tool, args)
+            except McpToolError as e:  # one refused call must not hide the others
+                print(f"\n--- {tool}: Swiggy refused the call ({e.message[:200]})")
+                continue
+            _show(f"{tool} args={sorted(args)}", result, strict=strict)
+            if tool == "search_restaurants":
+                known["restaurantId"] = first_open_restaurant_id(result)
     except McpError as e:
         print(f"\nSwiggy call failed: {type(e).__name__}: {e}")
         return 2

@@ -34,6 +34,8 @@ class FakeSwiggy:
         self.fail_next: list[tuple[int, dict]] = []   # queued (status, headers) failures for /food
         self.use_sse = False
         self.drop_sessions_once = False
+        self.omit_refresh_token = False   # real Swiggy sent no refresh_token on a repeat sign-in
+        self.broken_token_body = False
         self._routes()
 
     # ----- helpers used by tests -----
@@ -41,6 +43,10 @@ class FakeSwiggy:
         access, refresh = "at-" + secrets.token_hex(8), "rt-" + secrets.token_hex(8)
         self.access[access] = 1
         self.refresh[refresh] = True
+        if self.broken_token_body:
+            return {"token_type": "Bearer"}
+        if self.omit_refresh_token:
+            return {"access_token": access, "token_type": "Bearer", "expires_in": self.expires_in}
         return {"access_token": access, "refresh_token": refresh, "token_type": "Bearer",
                 "expires_in": self.expires_in, "scope": "mcp:tools mcp:resources mcp:prompts"}
 

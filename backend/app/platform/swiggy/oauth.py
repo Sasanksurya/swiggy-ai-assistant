@@ -109,8 +109,13 @@ class SwiggyOAuth:
         body = await self._post("/auth/token", {"grant_type": "authorization_code", "code": code,
                                                 "code_verifier": entry[0], "redirect_uri": self.redirect_uri})
         auth = self._store.load()
-        self._store.save(StoredAuth(auth.registration, TokenSet.from_response(body, self._clock())))
-        log.info("Swiggy account connected")
+        previous = auth.tokens.refresh_token if auth.tokens else ""
+        try:
+            tokens = TokenSet.from_response(body, self._clock(), keep_refresh_token=previous)
+        except ValueError as e:
+            raise OAuthError("Swiggy sent an unexpected token response.", "invalid_response") from e
+        self._store.save(StoredAuth(auth.registration, tokens))
+        log.info("Swiggy account connected (refresh token %s)", "received" if tokens.refresh_token else "NOT sent")
 
     # ----- tokens for API calls -----
     async def get_access_token(self) -> str:
@@ -131,6 +136,9 @@ class SwiggyOAuth:
                 raise NotConnected("Swiggy account is not connected.")
             if only_if_older_than is not None and current.refresh_token != only_if_older_than.refresh_token:
                 return current  # someone else already refreshed while we waited
+            if not current.refresh_token:  # Swiggy gave none at sign-in: the session ends when the access token does
+                self._store.save(StoredAuth(auth.registration, None))
+                raise NotConnected("Swiggy session expired. Please connect again.")
             try:
                 body = await self._post("/auth/token", {"grant_type": "refresh_token",
                                                         "refresh_token": current.refresh_token})
@@ -139,7 +147,10 @@ class SwiggyOAuth:
                     self._store.save(StoredAuth(auth.registration, None))  # dead session: sign in again
                     raise NotConnected("Swiggy session expired. Please connect again.") from e
                 raise
-            fresh = TokenSet.from_response(body, self._clock())
+            try:
+                fresh = TokenSet.from_response(body, self._clock(), keep_refresh_token=current.refresh_token)
+            except ValueError as e:
+                raise OAuthError("Swiggy sent an unexpected token response.", "invalid_response") from e
             self._store.save(StoredAuth(auth.registration, fresh))
             return fresh
 

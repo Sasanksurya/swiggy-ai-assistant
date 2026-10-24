@@ -21,10 +21,15 @@ Built and tested against a faithful fake of Swiggy's servers, and the MCP client
 the official MCP SDK server: sign-in, token storage and refresh, the MCP connection with its retry rules,
 a read-only `doctor` command, and the sign-in routes.
 
-**Not built yet: Sarah answering from real Swiggy data.** Swiggy's docs name the tools but do not show what
-their responses look like, and this project never invents data shapes. With `MOCK_MODE=false` Sarah
-therefore says plainly that the account is connected but responses are not mapped yet. The next step is to
-record real responses with the doctor (below) and write the mapping from them.
+**Live with real Swiggy data (read-only):** with `MOCK_MODE=false` and your account connected, Sarah can list
+your saved addresses, search restaurants, and show restaurant details and menus. The mapping in
+`app/platform/swiggy/mapping.py` is written from responses recorded with the doctor command and is fail-closed:
+a row missing a field Sarah needs is dropped, and an unrecognised response is reported, never guessed.
+Menus are paged by category, so Sarah reads the first three pages and says when a menu is partial.
+
+**Not live yet:** cart, order status and placing orders. Their real response shapes are not recorded and they
+change state, so Sarah says plainly that they are not enabled. Meal planning needs a keyword-free restaurant
+list, which Swiggy's search does not offer, so "plan a meal" is also limited in real mode.
 
 ## Step 1: try the sign-in on your own computer (no approval needed, per Swiggy's quickstart)
 Swiggy's quickstart says the OAuth steps run on `http://localhost` before you apply. If it turns out
@@ -41,8 +46,10 @@ If Swiggy shows an error about the redirect URI instead, localhost is not enable
 ```
 docker compose exec backend python -m app.platform.swiggy.doctor biryani
 ```
-It prints Swiggy's tool list with input schemas, then calls only `get_addresses`, `search_restaurants`,
-`get_restaurant_menu` and `get_food_cart`. Personal data (phone, email, address text, coordinates) is
+It prints every Swiggy tool with its inputs (required or optional), then calls only read-only tools:
+`get_addresses`, `search_restaurants`, `get_restaurant_menu`, `search_menu`, `get_food_cart`,
+`fetch_food_coupons` and `get_food_orders`. Each call is built from that tool's own schema, and one refused
+call does not stop the rest. Personal data (phone, email, address text, coordinates) is
 replaced with `<redacted>`; read it once before sharing it. It cannot change a cart or place an order: any
 other tool is refused, and a test checks that.
 

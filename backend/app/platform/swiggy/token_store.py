@@ -17,18 +17,26 @@ from typing import Protocol
 @dataclass
 class TokenSet:
     access_token: str = field(repr=False)
-    refresh_token: str = field(repr=False)
-    expires_at: float  # epoch seconds
+    refresh_token: str = field(default="", repr=False)  # empty: Swiggy sent none, so no silent renewal
+    expires_at: float = 0.0  # epoch seconds
     scope: str = ""
 
     def seconds_left(self, now: float | None = None) -> float:
         return self.expires_at - (time.time() if now is None else now)
 
     @classmethod
-    def from_response(cls, body: dict, now: float | None = None) -> TokenSet:
+    def from_response(cls, body: dict, now: float | None = None, keep_refresh_token: str = "") -> TokenSet:
+        """A response may omit refresh_token (OAuth allows it); then the previous one, if any, stays valid.
+        Raises ValueError if the response has no usable access token or lifetime."""
         now = time.time() if now is None else now
-        return cls(access_token=body["access_token"], refresh_token=body["refresh_token"],
-                   expires_at=now + float(body["expires_in"]), scope=str(body.get("scope", "")))
+        try:
+            access, lifetime = str(body["access_token"]), float(body["expires_in"])
+        except (KeyError, TypeError, ValueError) as e:
+            raise ValueError("token response is missing access_token or expires_in") from e
+        if not access:
+            raise ValueError("token response has an empty access_token")
+        return cls(access_token=access, refresh_token=str(body.get("refresh_token") or keep_refresh_token),
+                   expires_at=now + lifetime, scope=str(body.get("scope", "")))
 
 
 @dataclass
