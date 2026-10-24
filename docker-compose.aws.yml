@@ -1,0 +1,31 @@
+# Public demo on one AWS EC2 server. Layered on top of the normal files:
+#   docker compose -f docker-compose.yml -f docker-compose.frontend.yml -f docker-compose.aws.yml up --build -d
+#
+# Safe by design for a server on the internet:
+# - only the website is published (port 80); backend, mock, Redis and Postgres are reachable only inside Docker
+# - demo data only: MOCK_MODE=true, Swiggy sign-in routes switched off, real orders off
+# Needs Docker Compose 2.24.4+ for `!reset` and `!override` (the setup script installs a current version).
+services:
+  frontend:
+    ports: !override ["80:3000"]
+    restart: unless-stopped
+
+  backend:
+    ports: !reset []
+    environment:
+      APP_ENV: staging                 # production refuses mock mode on purpose; this is a demo
+      MOCK_MODE: "true"
+      SWIGGY_CONNECT_ENABLED: "false"  # no one on the internet can connect a Swiggy account to this server
+      ALLOW_REAL_ORDERS: "false"
+      NLU_PROVIDER: rules
+    restart: unless-stopped
+
+  mock-mcp:
+    ports: !reset []
+    restart: unless-stopped
+
+  postgres:
+    restart: unless-stopped
+
+  redis:
+    restart: unless-stopped

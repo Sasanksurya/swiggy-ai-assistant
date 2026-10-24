@@ -32,7 +32,9 @@ real responses. Cart and ordering on the real platform are not enabled yet. See 
 
 Phase 7 (done): agent evaluation suite, run in CI. See [docs/EVALUATION.md](docs/EVALUATION.md).
 
-Not built yet: AWS deployment, Kubernetes manifests.
+Phase 8 (ready, not live yet): AWS deployment of the demo on one EC2 server. See [docs/DEPLOY_AWS.md](docs/DEPLOY_AWS.md).
+
+Not built yet: HTTPS and automated deploys, Kubernetes manifests.
 
 ## Run
     cp .env.example .env
